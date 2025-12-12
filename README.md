@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ompoo Score Manager - 楽譜館
 
-## Getting Started
+部室に所蔵している楽譜を簡単に検索できるアプリケーションです。
 
-First, run the development server:
+## 📖 使い方 (How to Use)
+
+公開ページにアクセスし、検索バーにキーワード（曲名や本など）を入力して検索します。
+ヒットしたものが部室に所蔵されている楽譜です。検索結果に何も表示されない場合は、部室にはありません。
+
+### 主な機能
+- **検索機能**: キーワードで楽譜を検索し、一覧表示します。
+- **詳細ページ**: 検索結果をタップすると、その曲が収録されている楽譜集（本）の詳細ページへ移動します。
+  - 同じ本に収録されている他の曲も確認できます。
+  - 画像をタップすると、ヤマハの公式楽譜ページへジャンプできます。
+
+### 💡 Tips
+1. **詳細検索**: 検索欄のトグルをタップすると、詳細検索フォームが表示されます。
+   - 作曲者、編曲者、難易度（グレード）などを指定して詳しく検索できます。
+2. **データ購入**: 楽譜集詳細ページからヤマハの公式サイトへ飛ぶことで、レジストデータの購入ページなどへスムーズにアクセスできます。
+
+---
+
+## 💻 For Developers
+
+このプロジェクトは Next.js で構築されています。
+
+### Tech Stack
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Form Management**: TanStack Forms
+- **Schema Validation**: Zod
+- **URL State Management**: Nuqs
+
+### Getting Started
+
+ローカル環境での立ち上げ方です。
 
 ```bash
+# 依存関係のインストール
+npm install
+
+# 開発サーバーの起動
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Development Note
+開発に関する議論や連絡事項は、Ompoo Dev Discord の「楽譜館」チャンネルで行っています。
