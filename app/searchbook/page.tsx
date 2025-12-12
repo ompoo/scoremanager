@@ -8,31 +8,60 @@ export default function SearchBook({ searchParams }: { searchParams?: any }) {
   const que = searchParams?.query || ''
   const books: any[] = []
   const page = Number(searchParams?.page || 1)
+  
   return (
-    <div className="mx-auto w-full">
-      <header><Header /></header>
-      <h1 className="text-center text-2xl font-bold mb-3">本の検索</h1>
-      <form method="get" action="/searchbook"><SearchBar value={que} /></form>
+    <main className="min-h-screen flex flex-col bg-background text-foreground">
+      <Header small />
+      
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 space-y-8">
+        <div className="text-center space-y-4">
+          <h1 className="text-3xl font-bold tracking-tight">本の検索</h1>
+          <p className="text-muted-foreground">蔵書の中から本を探せます</p>
+        </div>
 
-      <table className="w-full border-collapse table-fixed bg-white object-center text-left text-sm mt-5 text-gray-800">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-4">book name</th>
-            <th className="px-6 py-4 w-[125px]">added</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100 border-t border-gray-100">
-          {books.map((book: any) => (
-            <tr key={book.id} className="hover:bg-gray-50">
-              <th className="px-6 py-4 text-blue-800 hover:underline"><a href={`/book/${book.id}`}>{book.book_name}</a></th>
-              <td className="px-6 py-4 whitespace-nowrap">{book.created_at}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <form method="get" action="/searchbook" className="max-w-xl mx-auto w-full">
+          <SearchBar value={que} />
+        </form>
 
-      <Pagination currentPage={page} totalPages={1} hasPrev={false} hasNext={false} endpoint="/searchbook" query={{ query: que }} />
+        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="px-6 py-4 font-medium">Book Name</th>
+                  <th className="px-6 py-4 w-[150px] font-medium">Added</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {books.length > 0 ? (
+                  books.map((book: any) => (
+                    <tr key={book.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <a href={`/book/${book.id}`} className="font-medium text-primary hover:underline underline-offset-4">
+                          {book.book_name}
+                        </a>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
+                        {book.created_at}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="px-6 py-12 text-center text-muted-foreground">
+                      No books found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <Pagination currentPage={page} totalPages={1} hasPrev={false} hasNext={false} endpoint="/searchbook" query={{ query: que }} />
+      </div>
+
       <Footer />
-    </div>
+    </main>
   )
 }

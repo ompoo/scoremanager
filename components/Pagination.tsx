@@ -19,29 +19,46 @@ function toQueryString(q: Record<string, any> = {}) {
 
 export default function Pagination({ currentPage, totalPages, hasPrev, hasNext, endpoint = '/', query = {} }: Props) {
   const q = { ...query }
+  
+  const baseButtonClass = "inline-flex items-center justify-center h-10 w-10 rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+  const activeClass = "border-border bg-card hover:bg-muted text-foreground"
+  const disabledClass = "border-border bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+
   return (
-    <div className="p-4 flex justify-center">
+    <div className="p-8 flex justify-center">
       <nav aria-label="Pagination">
-        <ul className="inline-flex items-center space-x-1 rounded-md text-sm">
+        <ul className="flex items-center gap-2">
           <li>
             {hasPrev ? (
-              <a href={`${endpoint}?${toQueryString({ ...q, page: currentPage - 1 })}`} className="inline-flex items-center space-x-2 rounded-full border border-gray-300 bg-white px-2 py-2 font-medium text-gray-500 hover:bg-gray-50">
+              <a href={`${endpoint}?${toQueryString({ ...q, page: currentPage - 1 })}`} className={`${baseButtonClass} ${activeClass}`}>
+                <span className="sr-only">Previous</span>
                 ◀
               </a>
             ) : (
-              <span className="inline-flex items-center space-x-2 rounded-full border border-gray-300 bg-white px-2 py-2 font-medium text-gray-300">◀</span>
+              <span className={`${baseButtonClass} ${disabledClass}`}>
+                <span className="sr-only">Previous</span>
+                ◀
+              </span>
             )}
           </li>
 
           <li>
-            <span className="inline-flex items-center space-x-1 rounded-md bg-white px-4 py-2 text-gray-500">Page <b className="mx-1">{currentPage}</b> of <b className="ml-1">{totalPages}</b></span>
+            <span className="mx-4 text-sm font-medium text-muted-foreground">
+              Page <span className="text-foreground font-bold">{currentPage}</span> of {totalPages}
+            </span>
           </li>
 
           <li>
             {hasNext ? (
-              <a href={`${endpoint}?${toQueryString({ ...q, page: currentPage + 1 })}`} className="inline-flex items-center space-x-2 rounded-full border border-gray-300 bg-white px-2 py-2 font-medium text-gray-500 hover:bg-gray-50">▶</a>
+              <a href={`${endpoint}?${toQueryString({ ...q, page: currentPage + 1 })}`} className={`${baseButtonClass} ${activeClass}`}>
+                <span className="sr-only">Next</span>
+                ▶
+              </a>
             ) : (
-              <span className="inline-flex items-center space-x-2 rounded-full border border-gray-300 bg-white px-2 py-2 font-medium text-gray-300">▶</span>
+              <span className={`${baseButtonClass} ${disabledClass}`}>
+                <span className="sr-only">Next</span>
+                ▶
+              </span>
             )}
           </li>
         </ul>

@@ -7,20 +7,34 @@ type Props = {
 }
 
 export default function Header({ small }: Props) {
-  const containerClass = small ? 'h-[30vh] max-h-32 sm:max-h-[20vh]' : 'h-16'
+  const containerClass = small ? 'h-[25vh] min-h-[160px] sm:max-h-[250px]' : 'h-20'
+  
   return (
-    <div className={`relative w-full mx-auto ${containerClass} overflow-hidden`}>
-      <img src="/back_left.jpg" alt="left" className="max-w-[30%] max-h-[200%] absolute top-0 left-0" />
-      <div className="absolute inset-0 flex items-center mx-3 z-10">
-        <h2 className="flex items-center">
-          <Link href="/">
-            <img className="w-[36px]" src="/logo.jpg" alt="logo" />
-          </Link>
-          <h1 className="text-2xl mx-3 lg:mx-7 font-bold">TUAT electone</h1>
-          <span className="text-2xl font-bold">音風</span>
-        </h2>
+    <div className={`relative w-full ${containerClass} overflow-hidden border-b border-border/40 bg-background/80 backdrop-blur-md transition-all duration-500`}>
+      {/* Decorative Background Elements */}
+      <div className="absolute inset-0 z-0 opacity-20 dark:opacity-10 pointer-events-none">
+         <img src="/back_left.jpg" alt="" className="absolute top-0 left-0 h-full object-cover w-1/3 mask-image-linear-to-r" style={{ maskImage: 'linear-gradient(to right, black, transparent)' }} />
+         <img src="/back_right.jpg" alt="" className="absolute top-0 right-0 h-full object-cover w-1/3" style={{ maskImage: 'linear-gradient(to left, black, transparent)' }} />
       </div>
-      <img src="/back_right.jpg" alt="right" className="max-w-[30%] max-h-[130%] sm:max-h-[200%] absolute top-3 right-3 z-0" />
+
+      {/* Main Content */}
+      <div className="relative z-10 h-full w-full max-w-7xl mx-auto flex items-center justify-between px-6">
+        <Link href="/" className="group flex items-center gap-4 transition-opacity hover:opacity-80">
+          <div className="relative h-12 w-12 overflow-hidden rounded-full shadow-lg ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all">
+             <img className="h-full w-full object-cover" src="/logo.jpg" alt="logo" />
+          </div>
+          <div className="flex flex-col">
+             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
+               TUAT electone
+             </h1>
+             <span className="text-sm font-medium text-muted-foreground tracking-widest">
+               音風
+             </span>
+          </div>
+        </Link>
+        
+        {/* Optional: Add navigation links here if needed in future */}
+      </div>
     </div>
   )
 }
