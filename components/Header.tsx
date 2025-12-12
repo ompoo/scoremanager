@@ -1,4 +1,5 @@
 "use client"
+import Link from 'next/link'
 import React from 'react'
 
 type Props = {
@@ -12,9 +13,9 @@ export default function Header({ small }: Props) {
       <img src="/back_left.jpg" alt="left" className="max-w-[30%] max-h-[200%] absolute top-0 left-0" />
       <div className="absolute inset-0 flex items-center mx-3 z-10">
         <h2 className="flex items-center">
-          <a href="/">
+          <Link href="/">
             <img className="w-[36px]" src="/logo.jpg" alt="logo" />
-          </a>
+          </Link>
           <h1 className="text-2xl mx-3 lg:mx-7 font-bold">TUAT electone</h1>
           <span className="text-2xl font-bold">音風</span>
         </h2>

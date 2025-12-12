@@ -1,10 +1,10 @@
 import React from 'react'
-import Header from './components/Header'
-import Footer from './components/Footer'
-import Notice from './components/Notice'
-import Pickups from './components/Pickups'
-import SearchBar from './components/SearchBar'
-import ExtraSearch from './components/ExtraSearch'
+import Header from '../components/Header'
+import Footer from '../components/Footer'
+import Notice from '../components/Notice'
+import Pickups from '../components/Pickups'
+import SearchBar from '../components/SearchBar'
+import ExtraSearch from '../components/ExtraSearch'
 
 export default function Home() {
   return (

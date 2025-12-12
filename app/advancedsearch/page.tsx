@@ -1,8 +1,8 @@
 import React from 'react'
-import Header from '../../app/components/Header'
-import Footer from '../../app/components/Footer'
-import ExtraSearch from '../../app/components/ExtraSearch'
-import Pagination from '../../app/components/Pagination'
+import Header from '../../components/Header'
+import Footer from '../../components/Footer'
+import ExtraSearch from '../../components/ExtraSearch'
+import Pagination from '../../components/Pagination'
 
 export default function AdvancedSearch({ searchParams }: { searchParams?: any }) {
   const page = Number(searchParams?.page || 1)

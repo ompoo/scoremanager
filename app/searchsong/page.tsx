@@ -1,8 +1,8 @@
 import React from 'react'
-import Header from '../../app/components/Header'
-import Footer from '../../app/components/Footer'
-import SearchBar from '../../app/components/SearchBar'
-import Pagination from '../../app/components/Pagination'
+import Header from '../../components/Header'
+import Footer from '../../components/Footer'
+import SearchBar from '../../components/SearchBar'
+import Pagination from '../../components/Pagination'
 
 export default function SearchSong({ searchParams }: { searchParams?: any }) {
   const que = searchParams?.query || ''
