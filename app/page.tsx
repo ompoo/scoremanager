@@ -11,57 +11,47 @@ export default function Home() {
     <main className="min-h-screen flex flex-col bg-background text-foreground">
       <Header small />
 
-      <div className="flex-1 w-full max-w-5xl mx-auto px-4 py-12 space-y-16">
+      <div className="flex-1 w-full max-w-5xl mx-auto px-4 py-16 sm:py-24 space-y-20">
         
-        {/* Hero / Intro Section */}
-        <section className="text-center space-y-4">
-          <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
-            音風 楽譜館へようこそ
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
-            ここでは部室所蔵の楽譜を検索できます。
-          </p>
+        {/* Hero / Unified Search Section */}
+        <section className="flex flex-col items-center space-y-8 max-w-3xl mx-auto w-full">
+          <div className="text-center space-y-4">
+            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl bg-clip-text text-transparent bg-gradient-to-br from-foreground to-muted-foreground pb-2">
+              音風 楽譜館
+            </h2>
+            <p className="text-muted-foreground text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed">
+              部室にある全ての楽譜・書籍を一括検索
+            </p>
+          </div>
+
+          <div className="w-full space-y-6">
+            <form method="get" action="/search" className="w-full transform transition-all hover:scale-[1.01] duration-300">
+              <SearchBar autoSync={false} />
+            </form>
+            
+            <div className="flex justify-center w-full">
+              <ExtraSearch />
+            </div>
+          </div>
         </section>
 
-        {/* Search Cards Grid */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Book Search */}
-          <div className="group rounded-2xl border border-border bg-card p-8 shadow-sm hover:shadow-lg hover:border-primary/20 transition-all duration-300">
-            <h3 className="text-xl font-bold mb-6 flex items-center justify-center gap-2 text-foreground">
-              <span>📚</span> <span>本の検索</span>
-            </h3>
-            <form method="get" action="/searchbook" className="w-full">
-              <SearchBar autoSync={false} />
-            </form>
-          </div>
-
-          {/* Song Search */}
-          <div className="group rounded-2xl border border-border bg-card p-8 shadow-sm hover:shadow-lg hover:border-primary/20 transition-all duration-300">
-            <h3 className="text-xl font-bold mb-6 flex items-center justify-center gap-2 text-foreground">
-              <span>🎵</span> <span>曲の検索</span>
-            </h3>
-            <form method="get" action="/searchsong" className="w-full">
-              <SearchBar autoSync={false} />
-            </form>
-          </div>
-        </div>
-
-        {/* Advanced Search */}
-        <div className="flex justify-center">
-          <ExtraSearch />
-        </div>
-
         {/* Information Sections */}
-        <div className="grid gap-12">
+        <div className="grid gap-12 pt-8 border-t border-border/50">
           <section className="space-y-6">
-            <h3 className="text-2xl font-bold text-center tracking-tight">お知らせ</h3>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">📢</span>
+              <h3 className="text-2xl font-bold tracking-tight">お知らせ</h3>
+            </div>
             <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
               <Notice noticeData={[]} />
             </div>
           </section>
 
           <section className="space-y-6">
-            <h3 className="text-2xl font-bold text-center tracking-tight">Pick Up</h3>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">✨</span>
+              <h3 className="text-2xl font-bold tracking-tight">Pick Up</h3>
+            </div>
             <Pickups items={[]} />
           </section>
         </div>

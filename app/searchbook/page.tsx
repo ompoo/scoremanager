@@ -4,11 +4,47 @@ import Footer from '../../components/Footer'
 import SearchBar from '../../components/SearchBar'
 import Pagination from '../../components/Pagination'
 import { searchParamsCache } from '@/lib/searchParams'
+import { createClient } from '@/utils/supabase/server'
 
-export default function SearchBook({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+const ITEMS_PER_PAGE = 10;
+
+export default async function SearchBook({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const { query, page } = searchParamsCache.parse(searchParams)
-  const books: any[] = []
+
+  const supabase = await createClient() // Make this await as createClient is async
+
+  // Fetch total count for pagination
+  let countQuery = supabase.from('books').select('*', { count: 'exact', head: true })
+  if (query) {
+    countQuery = countQuery.ilike('book_name', `%${query}%`)
+  }
+  const { count, error: countError } = await countQuery
+
+  const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
+  const from = (page - 1) * ITEMS_PER_PAGE;
+  const to = from + ITEMS_PER_PAGE - 1;
+
+  // Fetch books for the current page
+  let booksQuery = supabase.from('books').select('id, book_name, created_at')
+  if (query) {
+    booksQuery = booksQuery.ilike('book_name', `%${query}%`)
+  }
+  const { data: books, error } = await booksQuery.range(from, to)
   
+  if (countError || error) {
+    console.error('Error fetching books:', countError || error)
+    // In a real app, you might want to display an error message to the user
+    return (
+      <main className="min-h-screen flex flex-col bg-background text-foreground">
+        <Header small />
+        <div className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 space-y-8 text-center text-destructive">
+          <p>本の取得中にエラーが発生しました。</p>
+        </div>
+        <Footer />
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
       <Header small />
@@ -33,7 +69,7 @@ export default function SearchBook({ searchParams }: { searchParams: Record<stri
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {books.length > 0 ? (
+                {books && books.length > 0 ? (
                   books.map((book: any) => (
                     <tr key={book.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
@@ -42,14 +78,14 @@ export default function SearchBook({ searchParams }: { searchParams: Record<stri
                         </a>
                       </td>
                       <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
-                        {book.created_at}
+                        {book.created_at ? new Date(book.created_at).toLocaleDateString('ja-JP') : '-'}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={2} className="px-6 py-12 text-center text-muted-foreground">
-                      No books found.
+                      {query ? '検索条件に一致する本は見つかりませんでした。' : '本が登録されていません。'}
                     </td>
                   </tr>
                 )}
@@ -58,7 +94,7 @@ export default function SearchBook({ searchParams }: { searchParams: Record<stri
           </div>
         </div>
 
-        <Pagination currentPage={page} totalPages={1} hasPrev={false} hasNext={false} endpoint="/searchbook" query={{ query }} />
+        <Pagination currentPage={page} totalPages={totalPages} hasPrev={page > 1} hasNext={page < totalPages} endpoint="/searchbook" query={{ query }} />
       </div>
 
       <Footer />

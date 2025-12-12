@@ -7,6 +7,7 @@ import {
 export const searchParamsParsers = {
   // General search
   query: parseAsString.withDefault(''),
+  type: parseAsString.withDefault('all'), // 'all' | 'book' | 'song'
   
   // Advanced search fields
   book: parseAsString.withDefault(''),
