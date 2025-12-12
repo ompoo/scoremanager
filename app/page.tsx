@@ -31,7 +31,7 @@ export default function Home() {
               <span>📚</span> <span>本の検索</span>
             </h3>
             <form method="get" action="/searchbook" className="w-full">
-              <SearchBar />
+              <SearchBar autoSync={false} />
             </form>
           </div>
 
@@ -41,7 +41,7 @@ export default function Home() {
               <span>🎵</span> <span>曲の検索</span>
             </h3>
             <form method="get" action="/searchsong" className="w-full">
-              <SearchBar />
+              <SearchBar autoSync={false} />
             </form>
           </div>
         </div>

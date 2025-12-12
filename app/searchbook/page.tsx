@@ -3,11 +3,11 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import SearchBar from '../../components/SearchBar'
 import Pagination from '../../components/Pagination'
+import { searchParamsCache } from '@/lib/searchParams'
 
-export default function SearchBook({ searchParams }: { searchParams?: any }) {
-  const que = searchParams?.query || ''
+export default function SearchBook({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const { query, page } = searchParamsCache.parse(searchParams)
   const books: any[] = []
-  const page = Number(searchParams?.page || 1)
   
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
@@ -19,9 +19,9 @@ export default function SearchBook({ searchParams }: { searchParams?: any }) {
           <p className="text-muted-foreground">蔵書の中から本を探せます</p>
         </div>
 
-        <form method="get" action="/searchbook" className="max-w-xl mx-auto w-full">
-          <SearchBar value={que} />
-        </form>
+        <div className="max-w-xl mx-auto w-full">
+          <SearchBar />
+        </div>
 
         <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -58,7 +58,7 @@ export default function SearchBook({ searchParams }: { searchParams?: any }) {
           </div>
         </div>
 
-        <Pagination currentPage={page} totalPages={1} hasPrev={false} hasNext={false} endpoint="/searchbook" query={{ query: que }} />
+        <Pagination currentPage={page} totalPages={1} hasPrev={false} hasNext={false} endpoint="/searchbook" query={{ query }} />
       </div>
 
       <Footer />

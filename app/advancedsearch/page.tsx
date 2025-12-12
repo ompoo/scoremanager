@@ -3,9 +3,10 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import ExtraSearch from '../../components/ExtraSearch'
 import Pagination from '../../components/Pagination'
+import { searchParamsCache } from '@/lib/searchParams'
 
-export default function AdvancedSearch({ searchParams }: { searchParams?: any }) {
-  const page = Number(searchParams?.page || 1)
+export default function AdvancedSearch({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const { page } = searchParamsCache.parse(searchParams)
   const songs: any[] = []
   
   return (
