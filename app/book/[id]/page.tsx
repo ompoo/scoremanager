@@ -5,17 +5,28 @@ import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import BookCover from '../../../components/BookCover'
 import Link from 'next/link'
+import { Tables } from '@/types/supabase'
 
-export default async function BookPage({ params }: { params: Promise<{ id: number }> }) {
+type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade'>
+
+export default async function BookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const bookId = parseInt(id, 10)
+  
+  if (isNaN(bookId)) {
+    notFound()
+  }
+
   const supabase = await createClient()
 
   // Fetch book details
-  const { data: book, error: bookError } = await supabase
+  const { data, error: bookError } = await supabase
     .from('books')
     .select('*')
-    .eq('id', id)
+    .eq('id', bookId)
     .single()
+  
+  const book = data as Tables<'books'> | null
 
   if (bookError || !book) {
     console.error("Book not found or error:", bookError)
@@ -29,19 +40,17 @@ export default async function BookPage({ params }: { params: Promise<{ id: numbe
     'grade'
   ];
 
-  const { data: songs, error: songsError } = await supabase
+  const { data: songsData, error: songsError } = await supabase
     .from('songs')
     .select(selectFields.join(', ')) // Dynamically build select string
-    .eq('book_id', id)
+    .eq('book_id', bookId)
     .order('id') // Or order by track number if available
+
+  const songs = songsData as SongSummary[] | null
 
   if (songsError) {
     console.error("Error fetching songs for book:", songsError)
   }
-
-  // Helper for names - Not needed for this simplified query, but kept for future.
-  // const formatNames = (arr: any[] | null | undefined, nameKey: string) => 
-  //   arr?.map((item: any) => item[nameKey]).join(', ') || '-';
 
   // YAMAHA Cover Image Logic
   const coverUrl = book.product_code 
@@ -104,7 +113,7 @@ export default async function BookPage({ params }: { params: Promise<{ id: numbe
                 </thead>
                 <tbody className="divide-y divide-border">
                   {songs && songs.length > 0 ? (
-                    songs.map((song: any) => (
+                    songs.map((song) => (
                       <tr key={song.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-6 py-4 font-medium text-foreground">{song.song_name}</td>
                         <td className="px-6 py-4 text-muted-foreground">{song.grade || '-'}</td>

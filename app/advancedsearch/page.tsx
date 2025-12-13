@@ -6,10 +6,19 @@ import Pagination from '../../components/Pagination'
 import { searchParamsCache } from '@/lib/searchParams'
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
+import { Tables } from '@/types/supabase'
 
 const ITEMS_PER_PAGE = 20;
 
-export default async function AdvancedSearch({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+type SongWithDetails = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'memo'> & {
+  books: Pick<Tables<'books'>, 'id' | 'book_name'> | null;
+  artists: Pick<Tables<'artists'>, 'Artist_name'>[] | null;
+  lyricists: Pick<Tables<'lyricists'>, 'lyricist_name'>[] | null;
+  song_writers: Pick<Tables<'songwriters'>, 'song_writer_name'>[] | null;
+  arrangers: Pick<Tables<'arrangers'>, 'arranger_name'>[] | null;
+}
+
+export default async function AdvancedSearch({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { 
     page, 
     book, 
@@ -20,7 +29,7 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: R
     arranger, 
     grade, 
     memo 
-  } = searchParamsCache.parse(searchParams)
+  } = searchParamsCache.parse(await searchParams)
 
   const supabase = await createClient()
 
@@ -28,76 +37,6 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: R
   // We select standard fields plus related data for display.
   // For filtering on related tables, we need to apply the filter to the relation.
   // Supabase postgrest syntax allows filtering on joined tables.
-  
-  let queryBuilder = supabase.from('songs').select(`
-    id, 
-    song_name, 
-    grade, 
-    memo,
-    books!inner(id, book_name),
-    artists(Artist_name),
-    lyricists(lyricist_name),
-    song_writers(song_writer_name),
-    arrangers(arranger_name)
-  `, { count: 'exact' })
-
-  // Apply Filters
-  
-  // 1. Song Name
-  if (song) {
-    queryBuilder = queryBuilder.ilike('song_name', `%${song}%`)
-  }
-
-  // 2. Grade
-  if (grade) {
-    queryBuilder = queryBuilder.ilike('grade', `%${grade}%`)
-  }
-
-  // 3. Memo
-  if (memo) {
-    queryBuilder = queryBuilder.ilike('memo', `%${memo}%`)
-  }
-
-  // 4. Book Name (Related)
-  // We used !inner in select for books because usually every song has a book, 
-  // and we want to filter by it if provided.
-  if (book) {
-    queryBuilder = queryBuilder.ilike('books.book_name', `%${book}%`)
-  }
-
-  // 5. Artist (Related Many-to-Many)
-  // To filter by a many-to-many relation field, we use the !inner modifier on the join
-  // BUT we also want to fetch ALL artists for display, not just the matched one.
-  // Supabase/PostgREST is tricky here. If we filter `artists!inner(Artist_name)`, 
-  // the returned `artists` array might only contain the matched artist.
-  // A common workaround is to modify the query logic or accept this behavior.
-  // For searching, seeing "why it matched" is often good enough.
-  // Let's use !inner on a separate alias or just accept standard behavior for now.
-  // Actually, let's try standard filtering on the relation.
-  if (artist) {
-    // This syntax filters the PARENT rows (songs) based on CHILD conditions.
-    // We need to use !inner to ensure it acts as a filter for the song, not just the nested array.
-    // However, if we do `artists!inner(Artist_name)`, the returned `artists` array will ONLY have matching artists.
-    // To show ALL artists, we would technically need a second query or a more complex one.
-    // For this prototype, showing only matching artists in the result column is acceptable 
-    // or we assume most songs have few artists.
-    // Let's refine the select to separate filter vs display if needed, but simple is better first.
-    
-    // Re-defining select for filtering purposes if needed is hard in one chain.
-    // We will use the direct !inner approach.
-    // Note: We need to change the select string above to use !inner if filter is present?
-    // No, we can modify the modifier dynamically? No.
-    // We can't easily switch select clause dynamically with method chaining cleanly for !inner.
-    // So we will stick to: if you search by artist, we assume you want to see that artist.
-    
-    // Ideally we would use `not.is.artists`, null? No.
-    // Let's rely on the query builder's ability to filter deeply.
-    queryBuilder = queryBuilder.not('artists', 'is', null) // Dummy check? No.
-    
-    // The correct PostgREST way for "Has an artist matching X" is tricky without !inner.
-    // If we use !inner, it works as a filter.
-    // We need to construct the select string based on filters to add !inner dynamically.
-  }
   
   // Re-constructing select string based on needs
   const selects = [
@@ -112,7 +51,7 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: R
   ]
   
   // Reset builder with dynamic select
-  queryBuilder = supabase.from('songs').select(selects.join(','), { count: 'exact' })
+  let queryBuilder = supabase.from('songs').select(selects.join(','), { count: 'exact' })
 
   // Re-apply filters
   if (song) queryBuilder = queryBuilder.ilike('song_name', `%${song}%`)
@@ -129,13 +68,15 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: R
   const from = (page - 1) * ITEMS_PER_PAGE;
   const to = from + ITEMS_PER_PAGE - 1;
   
-  const { data: songs, count, error } = await queryBuilder.range(from, to).order('created_at', { ascending: false })
+  const { data, count, error } = await queryBuilder.range(from, to).order('created_at', { ascending: false })
+
+  const songs = data as unknown as SongWithDetails[] | null
 
   const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
 
   // Helper
-  const formatNames = (arr: any[] | null | undefined, nameKey: string) => 
-    arr?.map((item: any) => item[nameKey]).join(', ') || '-';
+  const formatNames = <T,>(arr: T[] | null | undefined, nameKey: keyof T) => 
+    arr?.map((item) => String(item[nameKey])).join(', ') || '-';
 
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
@@ -170,7 +111,7 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: R
                 </thead>
                 <tbody className="divide-y divide-border">
                   {songs && songs.length > 0 ? (
-                    songs.map((song: any) => (
+                    songs.map((song) => (
                       <tr key={song.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-6 py-4 font-medium text-foreground">{song.song_name}</td>
                         <td className="px-6 py-4">

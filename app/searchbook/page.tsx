@@ -5,11 +5,14 @@ import SearchBar from '../../components/SearchBar'
 import Pagination from '../../components/Pagination'
 import { searchParamsCache } from '@/lib/searchParams'
 import { createClient } from '@/utils/supabase/server'
+import { Tables } from '@/types/supabase'
 
 const ITEMS_PER_PAGE = 10;
 
-export default async function SearchBook({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const { query, page } = searchParamsCache.parse(searchParams)
+type Book = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'>
+
+export default async function SearchBook({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const { query, page } = searchParamsCache.parse(await searchParams)
 
   const supabase = await createClient() // Make this await as createClient is async
 
@@ -29,7 +32,9 @@ export default async function SearchBook({ searchParams }: { searchParams: Recor
   if (query) {
     booksQuery = booksQuery.ilike('book_name', `%${query}%`)
   }
-  const { data: books, error } = await booksQuery.range(from, to)
+  const { data, error } = await booksQuery.range(from, to)
+
+  const books = data as Book[] | null
   
   if (countError || error) {
     console.error('Error fetching books:', countError || error)
@@ -70,7 +75,7 @@ export default async function SearchBook({ searchParams }: { searchParams: Recor
               </thead>
               <tbody className="divide-y divide-border">
                 {books && books.length > 0 ? (
-                  books.map((book: any) => (
+                  books.map((book) => (
                     <tr key={book.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
                         <a href={`/book/${book.id}`} className="font-medium text-primary hover:underline underline-offset-4">
