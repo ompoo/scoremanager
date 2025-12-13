@@ -23,9 +23,14 @@ export default async function SearchBook({ searchParams }: { searchParams: Promi
   }
   const { count, error: countError } = await countQuery
 
+
+
   const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
   const from = (page - 1) * ITEMS_PER_PAGE;
   const to = from + ITEMS_PER_PAGE - 1;
+
+
+
 
   // Fetch books for the current page
   let booksQuery = supabase.from('books').select('id, book_name, created_at')
@@ -33,7 +38,6 @@ export default async function SearchBook({ searchParams }: { searchParams: Promi
     booksQuery = booksQuery.ilike('book_name', `%${query}%`)
   }
   const { data, error } = await booksQuery.range(from, to)
-
   const books = data as Book[] | null
   
   if (countError || error) {

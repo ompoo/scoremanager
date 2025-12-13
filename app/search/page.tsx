@@ -1,4 +1,3 @@
-import React from 'react'
 import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import SearchBar from '../../components/SearchBar'
@@ -6,75 +5,100 @@ import { searchParamsCache } from '@/lib/searchParams'
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import SearchTypeFilter from '../../components/SearchTypeFilter'
+import Pagination from '../../components/Pagination'
 import { Tables } from '@/types/supabase'
 
-type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade'> & { resultType: 'song' }
+type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'created_at'> & { resultType: 'song' }
 type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book' }
 
 type SearchResultItem = SongSummary | BookSummary
 
-export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const resolvedParams = await searchParams
-  console.log('Resolved Raw Search Params:', resolvedParams) // New debug log
+export default async function SearchPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const searchParams = await props.searchParams
+  const { query, type, page } = searchParamsCache.parse(searchParams)
 
-  const { query, type } = searchParamsCache.parse(resolvedParams)
-  console.log('Parsed Search Params:', { query, type }) // Updated log, was 'Search Params'
-
+  const ITEMS_PER_PAGE = 10
+  const offset = (page - 1) * ITEMS_PER_PAGE
+  
   const supabase = await createClient()
+  
+  let results: SearchResultItem[] = []
+  let totalCount = 0
+  let totalPages = 0
 
-
-  // Prepare queries based on type
-  const fetchSongs = type === 'all' || type === 'song'
-  const fetchBooks = type === 'all' || type === 'book'
-
-  let songs: SongSummary[] = []
-  let books: BookSummary[] = []
-
-  if (fetchSongs) {
-    console.log('Starting song fetch...')
-    let songQuery = supabase.from('songs')
-      .select('id, song_name, grade') // Simplified query for debugging
-      .limit(20)
-    
-    if (query) {
-      songQuery = songQuery.ilike('song_name', `%${query}%`)
-    }
-
-    const { data, error } = await songQuery
-    
-    if (error) {
-      console.error('Error fetching songs:', error)
-    } else if (data) {
-      songs = data.map(s => ({ ...s, resultType: 'song' }))
-      console.log('Fetched songs count:', songs.length)
-    }
-  }
-
-  if (fetchBooks) {
-    console.log('Starting book fetch...')
-    let bookQuery = supabase.from('books')
-      .select('id, book_name, created_at')
-      .limit(20)
+  // Helper to fetch books
+  const fetchBooks = async () => {
+    let queryBuilder = supabase
+      .from('books')
+      .select('id, book_name, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + ITEMS_PER_PAGE - 1)
 
     if (query) {
-      bookQuery = bookQuery.ilike('book_name', `%${query}%`)
+      queryBuilder = queryBuilder.ilike('book_name', `%${query}%`)
     }
-
-    const { data, error } = await bookQuery
-
-    if (error) {
-      console.error('Error fetching books:', error)
-    } else if (data) {
-      books = data.map(b => ({ ...b, resultType: 'book' }))
-      console.log('Fetched books count:', books.length)
-    }
+    
+    return await queryBuilder
   }
 
-  // Merge results
-  const results: SearchResultItem[] = [
-    ...books,
-    ...songs
-  ]
+  // Helper to fetch songs
+  const fetchSongs = async () => {
+    let queryBuilder = supabase
+      .from('songs')
+      .select('id, song_name, grade, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(offset, offset + ITEMS_PER_PAGE - 1)
+
+    if (query) {
+      queryBuilder = queryBuilder.ilike('song_name', `%${query}%`)
+    }
+
+    return await queryBuilder
+  }
+
+  if (type === 'book') {
+    const { data, count } = await fetchBooks()
+    if (data) {
+      results = data.map(d => ({ ...d, resultType: 'book' }))
+    }
+    totalCount = count || 0
+    totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+
+  } else if (type === 'song') {
+    const { data, count } = await fetchSongs()
+    if (data) {
+      results = data.map(d => ({ ...d, resultType: 'song' }))
+    }
+    totalCount = count || 0
+    totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+
+  } else {
+    // type === 'all'
+    const [booksRes, songsRes] = await Promise.all([fetchBooks(), fetchSongs()])
+    
+    const booksData = booksRes.data?.map(d => ({ ...d, resultType: 'book' as const })) || []
+    const songsData = songsRes.data?.map(d => ({ ...d, resultType: 'song' as const })) || []
+    
+    // Combine and sort by created_at desc
+    results = [...booksData, ...songsData].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+
+    const booksCount = booksRes.count || 0
+    const songsCount = songsRes.count || 0
+    
+    // For 'all' view, use the max pages of either category to allow navigation
+    // This is a simplified approach for mixed pagination
+    const booksPages = Math.ceil(booksCount / ITEMS_PER_PAGE)
+    const songsPages = Math.ceil(songsCount / ITEMS_PER_PAGE)
+    totalPages = Math.max(booksPages, songsPages)
+    totalCount = booksCount + songsCount
+  }
+
+  const hasPrev = page > 1
+  const hasNext = page < totalPages
 
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
@@ -85,7 +109,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold tracking-tight">検索結果</h1>
             <p className="text-muted-foreground">
-              &quot;{query}&quot; の検索結果
+              {query ? `"${query}" の検索結果: ${totalCount}件` : `全件表示: ${totalCount}件`}
             </p>
           </div>
           
@@ -104,7 +128,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   <tr>
                     <th className="px-6 py-3 w-25 font-medium">Type</th>
                     <th className="px-6 py-3 font-medium">Name</th>
-                    <th className="px-6 py-3 font-medium">Info / Artists</th>
+                    <th className="px-6 py-3 font-medium">Info</th>
                     <th className="px-6 py-3 font-medium w-37.5">Link</th>
                   </tr>
                 </thead>
@@ -127,14 +151,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           {item.resultType === 'book' ? item.book_name : item.song_name}
                         </td>
                         <td className="px-6 py-3 text-muted-foreground max-w-75 truncate">
-                          {item.resultType === 'book' ? (
-                            <span className="text-xs">Added: {new Date(item.created_at).toLocaleDateString()}</span>
-                          ) : (
-                            <>
-                              {/* Temporarily disabled relations display */}
-                              <span className="text-xs text-muted-foreground">Detail info unavailable</span>
-                              {item.grade && <span className="ml-2 text-xs border border-border px-1 rounded">{item.grade}</span>}
-                            </>
+                          <span className="text-xs mr-2">
+                            {new Date(item.created_at).toLocaleDateString()}
+                          </span>
+                          {item.resultType === 'song' && item.grade && (
+                             <span className="text-xs border border-border px-1 rounded">{item.grade}</span>
                           )}
                         </td>
                         <td className="px-6 py-3">
@@ -143,7 +164,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                                 詳細を見る &rarr;
                               </Link>
                            ) : (
-                              // We don't have item.books.id now, so fallback to simple text or song link if we had a song detail page
                               <span className="text-muted-foreground">-</span>
                            )}
                         </td>
@@ -160,6 +180,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               </table>
             </div>
           </div>
+          
+          {totalPages > 1 && (
+            <Pagination 
+              totalPages={totalPages}
+              hasPrev={hasPrev}
+              hasNext={hasNext}
+            />
+          )}
         </div>
 
       </div>
