@@ -10,15 +10,16 @@ import { Tables } from '@/types/supabase'
 
 const ITEMS_PER_PAGE = 20;
 
-type SongWithDetails = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'memo'> & {
+type SongWithDetails = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'memo' | 'book_id'> & {
   books: Pick<Tables<'books'>, 'id' | 'book_name'> | null;
   artists: Pick<Tables<'artists'>, 'Artist_name'>[] | null;
   lyricists: Pick<Tables<'lyricists'>, 'lyricist_name'>[] | null;
-  song_writers: Pick<Tables<'songwriters'>, 'song_writer_name'>[] | null;
+  songwriters: Pick<Tables<'songwriters'>, 'song_writer_name'>[] | null;
   arrangers: Pick<Tables<'arrangers'>, 'arranger_name'>[] | null;
 }
 
-export default async function AdvancedSearch({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function AdvancedSearch(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const searchParams = await props.searchParams
   const { 
     page, 
     book, 
@@ -29,24 +30,19 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: P
     arranger, 
     grade, 
     memo 
-  } = searchParamsCache.parse(await searchParams)
+  } = searchParamsCache.parse(searchParams)
 
   const supabase = await createClient()
 
   // Base Query Selection
-  // We select standard fields plus related data for display.
-  // For filtering on related tables, we need to apply the filter to the relation.
-  // Supabase postgrest syntax allows filtering on joined tables.
-  
-  // Re-constructing select string based on needs
   const selects = [
-    'id', 'song_name', 'grade', 'memo',
+    'id', 'song_name', 'grade', 'memo', 'book_id',
     // Always fetch book info
     book ? 'books!inner(id, book_name)' : 'books(id, book_name)',
     // Relations
     artist ? 'artists!inner(Artist_name)' : 'artists(Artist_name)',
     lyricist ? 'lyricists!inner(lyricist_name)' : 'lyricists(lyricist_name)',
-    songWriter ? 'song_writers!inner(song_writer_name)' : 'song_writers(song_writer_name)',
+    songWriter ? 'songwriters!inner(song_writer_name)' : 'songwriters(song_writer_name)',
     arranger ? 'arrangers!inner(arranger_name)' : 'arrangers(arranger_name)',
   ]
   
@@ -61,7 +57,7 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: P
   if (book) queryBuilder = queryBuilder.ilike('books.book_name', `%${book}%`)
   if (artist) queryBuilder = queryBuilder.ilike('artists.Artist_name', `%${artist}%`)
   if (lyricist) queryBuilder = queryBuilder.ilike('lyricists.lyricist_name', `%${lyricist}%`)
-  if (songWriter) queryBuilder = queryBuilder.ilike('song_writers.song_writer_name', `%${songWriter}%`)
+  if (songWriter) queryBuilder = queryBuilder.ilike('songwriters.song_writer_name', `%${songWriter}%`)
   if (arranger) queryBuilder = queryBuilder.ilike('arrangers.arranger_name', `%${arranger}%`)
 
   // Pagination
@@ -73,6 +69,8 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: P
   const songs = data as unknown as SongWithDetails[] | null
 
   const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
 
   // Helper
   const formatNames = <T,>(arr: T[] | null | undefined, nameKey: keyof T) => 
@@ -113,7 +111,11 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: P
                   {songs && songs.length > 0 ? (
                     songs.map((song) => (
                       <tr key={song.id} className="hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-foreground">{song.song_name}</td>
+                        <td className="px-6 py-4 font-medium text-foreground">
+                           <Link href={`/book/${song.book_id}`} className="hover:underline hover:text-primary transition-colors">
+                              {song.song_name}
+                           </Link>
+                        </td>
                         <td className="px-6 py-4">
                            {song.books ? (
                               <Link href={`/book/${song.books.id}`} className="text-primary hover:underline underline-offset-4">
@@ -123,7 +125,7 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: P
                         </td>
                         <td className="px-6 py-4 text-muted-foreground">{formatNames(song.artists, 'Artist_name')}</td>
                         <td className="px-6 py-4 text-muted-foreground">{formatNames(song.lyricists, 'lyricist_name')}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{formatNames(song.song_writers, 'song_writer_name')}</td>
+                        <td className="px-6 py-4 text-muted-foreground">{formatNames(song.songwriters, 'song_writer_name')}</td>
                         <td className="px-6 py-4 text-muted-foreground">{formatNames(song.arrangers, 'arranger_name')}</td>
                         <td className="px-6 py-4 text-muted-foreground">{song.grade || '-'}</td>
                       </tr>
@@ -141,7 +143,13 @@ export default async function AdvancedSearch({ searchParams }: { searchParams: P
           </div>
         )}
         
-        <Pagination currentPage={page} totalPages={totalPages} hasPrev={page > 1} hasNext={page < totalPages} endpoint="/advancedsearch" />
+        {totalPages > 1 && (
+            <Pagination 
+              totalPages={totalPages}
+              hasPrev={hasPrev}
+              hasNext={hasNext}
+            />
+        )}
       </div>
 
       <Footer />
