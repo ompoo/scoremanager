@@ -38,7 +38,7 @@ export default function ExtraSearch() {
           <div className="flex justify-center">
             <button 
               type="submit" 
-              className="w-full sm:w-auto min-w-[200px] py-3 px-8 text-sm font-bold tracking-wide text-primary-foreground bg-primary rounded-full hover:bg-primary/90 focus:ring-4 focus:ring-primary/20 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+              className="w-full sm:w-auto min-w-50 py-3 px-8 text-sm font-bold tracking-wide text-primary-foreground bg-primary rounded-full hover:bg-primary/90 focus:ring-4 focus:ring-primary/20 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
             >
               検索結果を表示
             </button>

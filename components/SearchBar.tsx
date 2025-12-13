@@ -1,8 +1,6 @@
 "use client"
-import React, { useState, useEffect } from 'react'
-import { useQueryState } from 'nuqs'
+import { debounce, useQueryState } from 'nuqs'
 import { searchParamsParsers } from '@/lib/searchParams'
-import { time } from 'console'
 
 type Props = {
   autoSync?: boolean
@@ -11,16 +9,15 @@ type Props = {
 export default function SearchBar({ autoSync = true }: Props) {
 
     const [urlQuery, setUrlQuery] = useQueryState('query', searchParamsParsers.query.withOptions({
-      limitUrlUpdates:{                                                                                                                                                        
-        method:'throttle',   
-        timeMs: 200                                                                                                                                                            
-    },   
-      shallow: !autoSync
+      shallow: !autoSync,
+      limitUrlUpdates:debounce(250),
     }))
-
+    
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
-    setUrlQuery(val)
+      setUrlQuery(
+        val
+      )
   }
 
   const handleClear = () => {
