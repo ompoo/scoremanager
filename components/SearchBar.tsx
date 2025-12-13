@@ -27,7 +27,7 @@ export default function SearchBar({ autoSync = true }: Props) {
   }
 
   const handleClear = () => {
-    setUrlQuery('')
+    setUrlQuery(null)
   }
 
   const displayValue = urlQuery

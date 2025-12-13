@@ -30,9 +30,7 @@ export default function Home() {
             </div>
             
             <div className="flex justify-center w-full">
-              <div >
                 <ExtraSearch />
-              </div>
             </div>
           </div>
         </section>
