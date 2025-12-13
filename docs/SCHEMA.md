@@ -104,3 +104,9 @@ Supabase (PostgreSQL) で運用するためのデータベース設計書です�
 | :--- | :--- | :--- |
 | `song_id` | `bigint` | PK, FK -> `songs.id` |
 | `arranger_id` | `bigint` | PK, FK -> `arrangers.id` |
+
+## 関数
+
+### `get_random_books(limit_count int)`
+
+`product_code` が存在する本の中から、指定された数（`limit_count`）だけランダムに本を返す関数です。大規模なテーブルでも効率的にランダム選択が行えるように、`ORDER BY random()` に依存せず、ID配列からのサンプリング方式を採用しています。
