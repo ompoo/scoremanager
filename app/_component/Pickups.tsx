@@ -8,7 +8,7 @@ type Pickup = { id: number | string; product_code: string }
 export default async function Pickups() {
 
   const supabase = await createClient()
-  const { data, error } = await supabase.rpc('get_random_books', { limit_count: 4 })
+  const { data, error } = await supabase.rpc('get_random_books', { limit_count: 5 })
 
   let items: Pickup[] = []
 
