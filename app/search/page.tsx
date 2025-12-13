@@ -164,9 +164,13 @@ export default async function SearchPage(props: {
                                 詳細を見る &rarr;
                               </Link>
                            ) : (
-                              <Link href={`/book/${item.book_id}`} className="text-primary hover:underline">
-                                詳細を見る &rarr;
-                              </Link>
+                              item.book_id ? (
+                                <Link href={`/book/${item.book_id}`} className="text-primary hover:underline">
+                                  詳細を見る &rarr;
+                                </Link>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )
                            )}
                         </td>
                       </tr>
