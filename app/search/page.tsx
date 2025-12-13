@@ -8,7 +8,7 @@ import SearchTypeFilter from '../../components/SearchTypeFilter'
 import Pagination from '../../components/Pagination'
 import { Tables } from '@/types/supabase'
 
-type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'created_at'> & { resultType: 'song' }
+type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'book_id' | 'grade' | 'created_at'> & { resultType: 'song' }
 type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book' }
 
 type SearchResultItem = SongSummary | BookSummary
@@ -47,7 +47,7 @@ export default async function SearchPage(props: {
   const fetchSongs = async () => {
     let queryBuilder = supabase
       .from('songs')
-      .select('id, song_name, grade, created_at', { count: 'exact' })
+      .select('id, song_name, grade, created_at, book_id', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + ITEMS_PER_PAGE - 1)
 
@@ -164,7 +164,9 @@ export default async function SearchPage(props: {
                                 詳細を見る &rarr;
                               </Link>
                            ) : (
-                              <span className="text-muted-foreground">-</span>
+                              <Link href={`/book/${item.book_id}`} className="text-primary hover:underline">
+                                詳細を見る &rarr;
+                              </Link>
                            )}
                         </td>
                       </tr>
