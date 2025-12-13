@@ -1,49 +1,41 @@
 "use client"
-import React, { useState, useEffect } from 'react'
-import { useQueryState } from 'nuqs'
-import { searchParamsParsers } from '@/lib/searchParams'
+import React from 'react'
+import { useRouter } from 'next/navigation'
+import { useQueryState, debounce } from 'nuqs'
+import { searchParamsParsers ,createUrlWithParams} from '@/lib/searchParams'
 
 type Props = {
   autoSync?: boolean
 }
 
 export default function SearchBar({ autoSync = true }: Props) {
+  const router = useRouter()
+
   const [urlQuery, setUrlQuery] = useQueryState('query', searchParamsParsers.query.withOptions({ 
-    throttleMs: 500,
-    shallow: false
+    limitUrlUpdates: debounce(230),
+    shallow: !autoSync 
   }))
 
-  const [localQuery, setLocalQuery] = useState(urlQuery || '')
 
-  // Sync local state with URL if URL changes externally (and on mount)
-  useEffect(() => {
-    setLocalQuery(urlQuery || '')
-  }, [urlQuery])
+  const handleSearch = () => {
+    router.push(createUrlWithParams('/search', { query: urlQuery }));
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
-    setLocalQuery(val)
-    if (autoSync) {
-      setUrlQuery(val || null)
-    }
+    setUrlQuery(val || null) 
   }
 
   const handleClear = () => {
-    setLocalQuery('')
-    if (autoSync) {
-      setUrlQuery(null)
-    }
+    setUrlQuery(null)
   }
 
-  // Use localQuery for display to ensure responsiveness, 
-  // though if autoSync is true, urlQuery matches (delayed by throttle).
-  // Actually, for immediate feedback, localQuery is better even in autoSync mode.
-  const displayValue = localQuery
+  const displayValue = urlQuery
   const hasQuery = displayValue && displayValue.length > 0
 
   return (
     <div className="max-w-xl mx-auto relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="absolute inset-0 bg-linear-to-r from-primary/20 via-primary/10 to-transparent rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       <div className="relative flex items-center">
         <input 
@@ -71,9 +63,10 @@ export default function SearchBar({ autoSync = true }: Props) {
           )}
           
           <button 
-            className="p-2.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm active:scale-95" 
+            onClick={handleSearch}
+            className="p-2.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm active:scale-95 cursor-pointer" 
             aria-label="Search"
-            type="submit"
+            type="button"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-5 w-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />

@@ -1,12 +1,14 @@
 "use client"
-import React from 'react'
-import { useQueryStates } from 'nuqs'
-import { searchParamsParsers } from '@/lib/searchParams'
+import { debounce, useQueryStates } from 'nuqs'
+import { searchParamsParsers, createUrlWithParams } from '@/lib/searchParams'
+import { useRouter } from 'next/navigation'
 
 export default function ExtraForms() {
+  const router = useRouter()
+  
   const [state, setState] = useQueryStates(searchParamsParsers, {
-    throttleMs: 500,
-    shallow: false
+    limitUrlUpdates:debounce(250),
+    shallow: true
   })
 
   const clearAll = () => {
@@ -19,8 +21,12 @@ export default function ExtraForms() {
       arranger: null,
       grade: null,
       memo: null,
-      query: state.query // Keep global query? Or clear it too? Usually advanced form clears its own fields. Let's keep query.
+      query: null, // Clear global query as well, as requested. Advanced forms usually clear all fields.
     })
+  }
+
+  const handleSearch = () => {
+    router.push(createUrlWithParams('/advancedsearch', state));
   }
   
   const sections = [
@@ -68,7 +74,7 @@ export default function ExtraForms() {
                 <input
                   id={field.id}
                   name={field.name}
-                  value={state[field.name] || ''}
+                  value={state[field.name] || undefined}
                   onChange={(e) => setState({ [field.name]: e.target.value })}
                   placeholder={field.placeholder}
                   className="w-full rounded-lg border border-input bg-background/50 px-3 py-2.5 text-sm shadow-sm transition-all placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary hover:border-primary/50"
@@ -79,13 +85,21 @@ export default function ExtraForms() {
         </div>
       ))}
 
-      <div className="flex justify-end pt-4 border-t border-border">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border">
         <button
           type="button"
           onClick={clearAll}
-          className="text-sm text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1 px-3 py-2 rounded-md hover:bg-muted"
+          className="text-sm text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1 px-3 py-2 rounded-md hover:bg-muted order-2 sm:order-1"
         >
           <span>✕</span> すべてクリア
+        </button>
+        
+        <button 
+          type="button"
+          onClick={handleSearch}
+          className="w-full sm:w-auto order-1 sm:order-2 py-3 px-8 text-sm font-bold tracking-wide text-primary-foreground bg-primary rounded-full hover:bg-primary/90 focus:ring-4 focus:ring-primary/20 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+        >
+          検索結果を表示
         </button>
       </div>
     </div>

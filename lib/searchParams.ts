@@ -24,3 +24,15 @@ export const searchParamsParsers = {
 }
 
 export const searchParamsCache = createSearchParamsCache(searchParamsParsers)
+
+// Helper function to create URL with query parameters from state
+export function createUrlWithParams(pathname: string, state: Record<string, string | number | null | undefined>): string {
+  const params = new URLSearchParams();
+  Object.entries(state).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      params.set(key, String(value));
+    }
+  });
+  const queryString = params.toString();
+  return `${pathname}${queryString ? `?${queryString}` : ''}`;
+}

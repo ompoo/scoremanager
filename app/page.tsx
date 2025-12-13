@@ -25,12 +25,12 @@ export default function Home() {
           </div>
 
           <div className="w-full space-y-6">
-            <form method="get" action="/search" className="w-full transform transition-all hover:scale-[1.01] duration-300">
+            <div  className="w-full transform transition-all hover:scale-[1.01] duration-300">
               <SearchBar autoSync={false} />
-            </form>
+            </div>
             
             <div className="flex justify-center w-full">
-              <ExtraSearch />
+                <ExtraSearch />
             </div>
           </div>
         </section>
