@@ -2,48 +2,40 @@
 import React, { useState, useEffect } from 'react'
 import { useQueryState } from 'nuqs'
 import { searchParamsParsers } from '@/lib/searchParams'
+import { time } from 'console'
 
 type Props = {
   autoSync?: boolean
 }
 
 export default function SearchBar({ autoSync = true }: Props) {
-  const [urlQuery, setUrlQuery] = useQueryState('query', searchParamsParsers.query.withOptions({ 
-    throttleMs: 500,
-    shallow: false
-  }))
 
-  const [localQuery, setLocalQuery] = useState(urlQuery || '')
-
-  // Sync local state with URL if URL changes externally (and on mount)
-  useEffect(() => {
-    setLocalQuery(urlQuery || '')
-  }, [urlQuery])
+    const [urlQuery, setUrlQuery] = useQueryState('query', searchParamsParsers.query.withOptions({
+      limitUrlUpdates:{                                                                                                                                                        
+        method:'throttle',   
+        timeMs: 200                                                                                                                                                            
+    },   
+      shallow: !autoSync
+    }))
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
-    setLocalQuery(val)
-    if (autoSync) {
-      setUrlQuery(val || null)
-    }
+    setUrlQuery(val)
   }
 
   const handleClear = () => {
-    setLocalQuery('')
-    if (autoSync) {
-      setUrlQuery(null)
-    }
+    setUrlQuery('')
   }
 
   // Use localQuery for display to ensure responsiveness, 
   // though if autoSync is true, urlQuery matches (delayed by throttle).
   // Actually, for immediate feedback, localQuery is better even in autoSync mode.
-  const displayValue = localQuery
+  const displayValue = urlQuery
   const hasQuery = displayValue && displayValue.length > 0
 
   return (
     <div className="max-w-xl mx-auto relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="absolute inset-0 bg-linear-to-r from-primary/20 via-primary/10 to-transparent rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       <div className="relative flex items-center">
         <input 
