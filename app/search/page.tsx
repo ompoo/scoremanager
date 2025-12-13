@@ -102,10 +102,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               <table className="w-full text-sm text-left whitespace-nowrap">
                 <thead className="bg-muted text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 w-[100px] font-medium">Type</th>
+                    <th className="px-6 py-3 w-25 font-medium">Type</th>
                     <th className="px-6 py-3 font-medium">Name</th>
                     <th className="px-6 py-3 font-medium">Info / Artists</th>
-                    <th className="px-6 py-3 font-medium w-[150px]">Link</th>
+                    <th className="px-6 py-3 font-medium w-37.5">Link</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -126,7 +126,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         <td className="px-6 py-3 font-medium text-foreground">
                           {item.resultType === 'book' ? item.book_name : item.song_name}
                         </td>
-                        <td className="px-6 py-3 text-muted-foreground max-w-[300px] truncate">
+                        <td className="px-6 py-3 text-muted-foreground max-w-75 truncate">
                           {item.resultType === 'book' ? (
                             <span className="text-xs">Added: {new Date(item.created_at).toLocaleDateString()}</span>
                           ) : (

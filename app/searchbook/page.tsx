@@ -70,7 +70,7 @@ export default async function SearchBook({ searchParams }: { searchParams: Promi
               <thead className="bg-muted text-muted-foreground border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">Book Name</th>
-                  <th className="px-6 py-4 w-[150px] font-medium">Added</th>
+                  <th className="px-6 py-4 w-37.5 font-medium">Added</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
