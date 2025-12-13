@@ -49,7 +49,7 @@ export default function Pagination({totalPages, hasPrev, hasNext }: Props) {
 
           <li>
             <span className="mx-4 text-sm font-medium text-muted-foreground">
-              Page <span className="text-foreground font-bold">{urlQuery}</span> of {totalPages}
+              Page <span className="text-foreground font-bold">{urlQuery ?? 1}</span> of {totalPages}
             </span>
           </li>
 
