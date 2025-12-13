@@ -5,11 +5,20 @@ import SearchBar from '../../components/SearchBar'
 import Pagination from '../../components/Pagination'
 import { searchParamsCache } from '@/lib/searchParams'
 import { createClient } from '@/utils/supabase/server'
+import { Tables } from '@/types/supabase'
 
 const ITEMS_PER_PAGE = 10;
 
-export default async function SearchSong({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const { query, page } = searchParamsCache.parse(searchParams)
+type SongWithDetails = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'book_id'> & {
+  books: Pick<Tables<'books'>, 'book_name'> | null;
+  artists: Pick<Tables<'artists'>, 'Artist_name'>[] | null;
+  lyricists: Pick<Tables<'lyricists'>, 'lyricist_name'>[] | null;
+  song_writers: Pick<Tables<'songwriters'>, 'song_writer_name'>[] | null;
+  arrangers: Pick<Tables<'arrangers'>, 'arranger_name'>[] | null;
+}
+
+export default async function SearchSong({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const { query, page } = searchParamsCache.parse(await searchParams)
 
   const supabase = await createClient() // Make this await as createClient is async
 
@@ -19,7 +28,8 @@ export default async function SearchSong({ searchParams }: { searchParams: Recor
   const selectQuery = `
     id, 
     song_name, 
-    grade, 
+    grade,
+    book_id,
     books(book_name), 
     artists(Artist_name), 
     lyricists(lyricist_name), 
@@ -43,7 +53,10 @@ export default async function SearchSong({ searchParams }: { searchParams: Recor
   if (query) {
     songsQuery = songsQuery.ilike('song_name', `%${query}%`)
   }
-  const { data: songs, error } = await songsQuery.range(from, to)
+  const { data, error } = await songsQuery.range(from, to)
+
+  // Cast the data to the correct type because Supabase types might not perfectly infer the deep joins automatically without complex generic arguments
+  const songs = data as unknown as SongWithDetails[] | null
   
   if (countError || error) {
     console.error('Error fetching songs:', countError || error)
@@ -60,8 +73,8 @@ export default async function SearchSong({ searchParams }: { searchParams: Recor
   }
 
   // Adjusting for potential nulls from join tables and using flatMap for simplicity
-  const formatNames = (arr: any[] | null | undefined, nameKey: string) => 
-    arr?.map((item: any) => item[nameKey]).join(', ') || '-';
+  const formatNames = <T,>(arr: T[] | null | undefined, nameKey: keyof T) => 
+    arr?.map((item) => String(item[nameKey])).join(', ') || '-';
 
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
@@ -93,7 +106,7 @@ export default async function SearchSong({ searchParams }: { searchParams: Recor
               </thead>
               <tbody className="divide-y divide-border">
                 {songs && songs.length > 0 ? (
-                  songs.map((song: any) => (
+                  songs.map((song) => (
                     <tr key={song.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4 font-medium text-foreground">{song.song_name}</td>
                       <td className="px-6 py-4">

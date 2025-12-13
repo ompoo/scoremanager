@@ -6,6 +6,12 @@ import { searchParamsCache } from '@/lib/searchParams'
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import SearchTypeFilter from '../../components/SearchTypeFilter'
+import { Tables } from '@/types/supabase'
+
+type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade'> & { resultType: 'song' }
+type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book' }
+
+type SearchResultItem = SongSummary | BookSummary
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const resolvedParams = await searchParams
@@ -21,8 +27,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const fetchSongs = type === 'all' || type === 'song'
   const fetchBooks = type === 'all' || type === 'book'
 
-  let songs: any[] = []
-  let books: any[] = []
+  let songs: SongSummary[] = []
+  let books: BookSummary[] = []
 
   if (fetchSongs) {
     console.log('Starting song fetch...')
@@ -39,7 +45,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (error) {
       console.error('Error fetching songs:', error)
     } else if (data) {
-      songs = data
+      songs = data.map(s => ({ ...s, resultType: 'song' }))
       console.log('Fetched songs count:', songs.length)
     }
   }
@@ -59,20 +65,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     if (error) {
       console.error('Error fetching books:', error)
     } else if (data) {
-      books = data
+      books = data.map(b => ({ ...b, resultType: 'book' }))
       console.log('Fetched books count:', books.length)
     }
   }
 
   // Merge results
-  const results = [
-    ...books.map((b: any) => ({ ...b, resultType: 'book' })),
-    ...songs.map((s: any) => ({ ...s, resultType: 'song' }))
+  const results: SearchResultItem[] = [
+    ...books,
+    ...songs
   ]
-
-  // Helper for names
-  const formatNames = (arr: any[] | null | undefined, nameKey: string) => 
-    arr?.map((item: any) => item[nameKey]).join(', ') || '-';
 
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
@@ -83,7 +85,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold tracking-tight">検索結果</h1>
             <p className="text-muted-foreground">
-              "{query}" の検索結果
+              &quot;{query}&quot; の検索結果
             </p>
           </div>
           
@@ -108,7 +110,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 </thead>
                 <tbody className="divide-y divide-border">
                   {results.length > 0 ? (
-                    results.map((item: any) => (
+                    results.map((item) => (
                       <tr key={`${item.resultType}-${item.id}`} className="hover:bg-muted/50 transition-colors">
                         <td className="px-6 py-3">
                           {item.resultType === 'book' ? (
