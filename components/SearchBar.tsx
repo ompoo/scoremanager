@@ -1,8 +1,8 @@
 "use client"
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { useQueryState, debounce } from 'nuqs'
-import { searchParamsParsers ,createUrlWithParams} from '@/lib/searchParams'
+import { useQueryState, debounce,createSerializer } from 'nuqs'
+import { searchParamsParsers} from '@/lib/searchParams'
 
 type Props = {
   autoSync?: boolean
@@ -16,9 +16,11 @@ export default function SearchBar({ autoSync = true }: Props) {
     shallow: !autoSync 
   }))
 
+  const serialize = createSerializer(searchParamsParsers)
+
 
   const handleSearch = () => {
-    router.push(createUrlWithParams('/search', { query: urlQuery }));
+    router.push('/search' + serialize({ query: urlQuery }));
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

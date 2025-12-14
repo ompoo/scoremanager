@@ -1,6 +1,6 @@
 "use client"
-import { debounce, useQueryStates } from 'nuqs'
-import { searchParamsParsers, createUrlWithParams } from '@/lib/searchParams'
+import { debounce, useQueryStates ,createSerializer } from 'nuqs'
+import { searchParamsParsers } from '@/lib/searchParams'
 import { useRouter } from 'next/navigation'
 
 export default function ExtraForms() {
@@ -11,22 +11,14 @@ export default function ExtraForms() {
     shallow: true
   })
 
+  const serialize = createSerializer(searchParamsParsers)
+
   const clearAll = () => {
-    setState({
-      book: null,
-      song: null,
-      artist: null,
-      lyricist: null,
-      songWriter: null,
-      arranger: null,
-      grade: null,
-      memo: null,
-      query: null, // Clear global query as well, as requested. Advanced forms usually clear all fields.
-    })
+    setState(null)
   }
 
   const handleSearch = () => {
-    router.push(createUrlWithParams('/advancedsearch', state));
+    router.push('/advancedsearch' + serialize(state));
   }
   
   const sections = [
@@ -74,7 +66,7 @@ export default function ExtraForms() {
                 <input
                   id={field.id}
                   name={field.name}
-                  value={state[field.name] || undefined}
+                  value={state[field.name] || ''}
                   onChange={(e) => setState({ [field.name]: e.target.value })}
                   placeholder={field.placeholder}
                   className="w-full rounded-lg border border-input bg-background/50 px-3 py-2.5 text-sm shadow-sm transition-all placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary hover:border-primary/50"
