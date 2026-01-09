@@ -7,11 +7,93 @@ import Link from 'next/link'
 import SearchTypeFilter from '../../components/SearchTypeFilter'
 import Pagination from '../../components/Pagination'
 import { Tables } from '@/types/supabase'
+import { unstable_cache } from 'next/cache'
 
 type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'book_id' | 'grade' | 'created_at'> & { resultType: 'song' }
-type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book' }
+type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book', matchedSongs?: SongSummary[] }
 
 type SearchResultItem = SongSummary | BookSummary
+
+// Cache function for 'all' search results
+const getCachedAllResults = unstable_cache(
+  async (query: string, supabaseUrl: string, supabaseAnonKey: string) => {
+    // Create a simple Supabase client without cookies
+    const { createClient: createBrowserClient } = await import('@supabase/supabase-js')
+    const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+    
+    const booksQuery = supabase
+      .from('books')
+      .select('id, book_name, created_at')
+    
+    const songsQuery = supabase
+      .from('songs')
+      .select('id, song_name, grade, created_at, book_id, books!inner(id, book_name, created_at)')
+    
+    if (query) {
+      booksQuery.ilike('book_name', `%${query}%`)
+      songsQuery.ilike('song_name', `%${query}%`)
+    }
+    
+    const [booksRes, songsRes] = await Promise.all([booksQuery, songsQuery])
+    
+    // Build book map with matched songs
+    const booksMap = new Map<number, BookSummary>()
+    
+    // Add books that matched by book_name
+    if (booksRes.data) {
+      booksRes.data.forEach(book => {
+        booksMap.set(book.id, { 
+          id: book.id, 
+          book_name: book.book_name,
+          created_at: book.created_at, 
+          resultType: 'book', 
+          matchedSongs: [] 
+        })
+      })
+    }
+    
+    // Process songs that matched by song_name
+    if (songsRes.data) {
+      songsRes.data.forEach(song => {
+        if (song.book_id && song.books) {
+          const bookData = Array.isArray(song.books) ? song.books[0] : song.books
+          
+          if (!booksMap.has(song.book_id)) {
+            // Add book from song's JOIN
+            booksMap.set(song.book_id, {
+              id: bookData.id,
+              book_name: bookData.book_name,
+              created_at: bookData.created_at,
+              resultType: 'book',
+              matchedSongs: []
+            })
+          }
+          
+          // Add matched song
+          const book = booksMap.get(song.book_id)!
+          book.matchedSongs!.push({
+            id: song.id,
+            song_name: song.song_name,
+            grade: song.grade,
+            created_at: song.created_at,
+            book_id: song.book_id,
+            resultType: 'song'
+          })
+        }
+      })
+    }
+    
+    // Sort by created_at
+    return Array.from(booksMap.values()).sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+  },
+  ['search-all'],
+  {
+    revalidate: 60, // Cache for 60 seconds
+    tags: ['search-results']
+  }
+)
 
 export default async function SearchPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -76,25 +158,16 @@ export default async function SearchPage(props: {
 
   } else {
     // type === 'all'
-    const [booksRes, songsRes] = await Promise.all([fetchBooks(), fetchSongs()])
-    
-    const booksData = booksRes.data?.map(d => ({ ...d, resultType: 'book' as const })) || []
-    const songsData = songsRes.data?.map(d => ({ ...d, resultType: 'song' as const })) || []
-    
-    // Combine and sort by created_at desc
-    results = [...booksData, ...songsData].sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    // Use cached results
+    const allBooks = await getCachedAllResults(
+      query || '',
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
-
-    const booksCount = booksRes.count || 0
-    const songsCount = songsRes.count || 0
     
-    // For 'all' view, use the max pages of either category to allow navigation
-    // This is a simplified approach for mixed pagination
-    const booksPages = Math.ceil(booksCount / ITEMS_PER_PAGE)
-    const songsPages = Math.ceil(songsCount / ITEMS_PER_PAGE)
-    totalPages = Math.max(booksPages, songsPages)
-    totalCount = booksCount + songsCount
+    totalCount = allBooks.length
+    totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+    results = allBooks.slice(offset, offset + ITEMS_PER_PAGE)
   }
 
   const hasPrev = page > 1
@@ -134,47 +207,85 @@ export default async function SearchPage(props: {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {results.length > 0 ? (
-                    results.map((item) => (
-                      <tr key={`${item.resultType}-${item.id}`} className="hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-3">
-                          {item.resultType === 'book' ? (
-                            <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:text-blue-300">
-                              📚 Book
+                    results.map((item) => {
+                      const rows = []
+                      
+                      // Add main book row
+                      rows.push(
+                        <tr key={`${item.resultType}-${item.id}`} className="hover:bg-muted/50 transition-colors">
+                          <td className="px-6 py-3">
+                            {item.resultType === 'book' ? (
+                              <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:text-blue-300">
+                                📚 Book
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:text-green-300">
+                                🎵 Song
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-3 font-medium text-foreground">
+                            {item.resultType === 'book' ? item.book_name : item.song_name}
+                          </td>
+                          <td className="px-6 py-3 text-muted-foreground max-w-75 truncate">
+                            <span className="text-xs mr-2">
+                              {new Date(item.created_at).toLocaleDateString()}
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:text-green-300">
-                              🎵 Song
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-3 font-medium text-foreground">
-                          {item.resultType === 'book' ? item.book_name : item.song_name}
-                        </td>
-                        <td className="px-6 py-3 text-muted-foreground max-w-75 truncate">
-                          <span className="text-xs mr-2">
-                            {new Date(item.created_at).toLocaleDateString()}
-                          </span>
-                          {item.resultType === 'song' && item.grade && (
-                             <span className="text-xs border border-border px-1 rounded">{item.grade}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-3">
-                           {item.resultType === 'book' ? (
-                              <Link href={`/book/${item.id}`} className="text-primary hover:underline">
-                                詳細を見る &rarr;
-                              </Link>
-                           ) : (
-                              item.book_id ? (
-                                <Link href={`/book/${item.book_id}`} className="text-primary hover:underline">
+                            {item.resultType === 'song' && item.grade && (
+                               <span className="text-xs border border-border px-1 rounded">{item.grade}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-3">
+                             {item.resultType === 'book' ? (
+                                <Link href={`/book/${item.id}`} className="text-primary hover:underline">
                                   詳細を見る &rarr;
                                 </Link>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )
-                           )}
-                        </td>
-                      </tr>
-                    ))
+                             ) : (
+                                item.book_id ? (
+                                  <Link href={`/book/${item.book_id}`} className="text-primary hover:underline">
+                                    詳細を見る &rarr;
+                                  </Link>
+                                ) : (
+                                  <span className="text-muted-foreground">-</span>
+                                )
+                             )}
+                          </td>
+                        </tr>
+                      )
+                      
+                      // Add matched songs rows (only songs that matched the query)
+                      if (item.resultType === 'book' && item.matchedSongs && item.matchedSongs.length > 0) {
+                        item.matchedSongs.forEach((song) => {
+                          rows.push(
+                            <tr key={`song-${song.id}`} className="bg-muted/30 hover:bg-muted/50 transition-colors">
+                              <td className="px-6 py-3 pl-12">
+                                <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:text-green-300">
+                                  🎵 Song
+                                </span>
+                              </td>
+                              <td className="px-6 py-3 text-sm text-foreground">
+                                {song.song_name}
+                              </td>
+                              <td className="px-6 py-3 text-muted-foreground max-w-75 truncate">
+                                <span className="text-xs mr-2">
+                                  {new Date(song.created_at).toLocaleDateString()}
+                                </span>
+                                {song.grade && (
+                                   <span className="text-xs border border-border px-1 rounded">{song.grade}</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-3">
+                                <Link href={`/book/${item.id}`} className="text-primary hover:underline">
+                                  詳細を見る &rarr;
+                                </Link>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      }
+                      
+                      return rows
+                    })
                   ) : (
                     <tr>
                       <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
