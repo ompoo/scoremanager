@@ -7,93 +7,11 @@ import Link from 'next/link'
 import SearchTypeFilter from '../../components/SearchTypeFilter'
 import Pagination from '../../components/Pagination'
 import { Tables } from '@/types/supabase'
-import { unstable_cache } from 'next/cache'
 
 type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'book_id' | 'grade' | 'created_at'> & { resultType: 'song' }
 type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book', matchedSongs?: SongSummary[] }
 
 type SearchResultItem = SongSummary | BookSummary
-
-// Cache function for 'all' search results
-const getCachedAllResults = unstable_cache(
-  async (query: string, supabaseUrl: string, supabaseAnonKey: string) => {
-    // Create a simple Supabase client without cookies
-    const { createClient: createBrowserClient } = await import('@supabase/supabase-js')
-    const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
-    
-    const booksQuery = supabase
-      .from('books')
-      .select('id, book_name, created_at')
-    
-    const songsQuery = supabase
-      .from('songs')
-      .select('id, song_name, grade, created_at, book_id, books!inner(id, book_name, created_at)')
-    
-    if (query) {
-      booksQuery.ilike('book_name', `%${query}%`)
-      songsQuery.ilike('song_name', `%${query}%`)
-    }
-    
-    const [booksRes, songsRes] = await Promise.all([booksQuery, songsQuery])
-    
-    // Build book map with matched songs
-    const booksMap = new Map<number, BookSummary>()
-    
-    // Add books that matched by book_name
-    if (booksRes.data) {
-      booksRes.data.forEach(book => {
-        booksMap.set(book.id, { 
-          id: book.id, 
-          book_name: book.book_name,
-          created_at: book.created_at, 
-          resultType: 'book', 
-          matchedSongs: [] 
-        })
-      })
-    }
-    
-    // Process songs that matched by song_name
-    if (songsRes.data) {
-      songsRes.data.forEach(song => {
-        if (song.book_id && song.books) {
-          const bookData = Array.isArray(song.books) ? song.books[0] : song.books
-          
-          if (!booksMap.has(song.book_id)) {
-            // Add book from song's JOIN
-            booksMap.set(song.book_id, {
-              id: bookData.id,
-              book_name: bookData.book_name,
-              created_at: bookData.created_at,
-              resultType: 'book',
-              matchedSongs: []
-            })
-          }
-          
-          // Add matched song
-          const book = booksMap.get(song.book_id)!
-          book.matchedSongs!.push({
-            id: song.id,
-            song_name: song.song_name,
-            grade: song.grade,
-            created_at: song.created_at,
-            book_id: song.book_id,
-            resultType: 'song'
-          })
-        }
-      })
-    }
-    
-    // Sort by created_at
-    return Array.from(booksMap.values()).sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )
-  },
-  ['search-all'],
-  {
-    revalidate: 60, // Cache for 60 seconds
-    tags: ['search-results']
-  }
-)
 
 export default async function SearchPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -158,11 +76,72 @@ export default async function SearchPage(props: {
 
   } else {
     // type === 'all'
-    // Use cached results
-    const allBooks = await getCachedAllResults(
-      query || '',
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    // Only 2 queries: books and songs with full JOIN
+    const booksQuery = supabase
+      .from('books')
+      .select('id, book_name, created_at')
+    
+    const songsQuery = supabase
+      .from('songs')
+      .select('id, song_name, grade, created_at, book_id, books!inner(id, book_name, created_at)')
+    
+    if (query) {
+      booksQuery.ilike('book_name', `%${query}%`)
+      songsQuery.ilike('song_name', `%${query}%`)
+    }
+    
+    const [booksRes, songsRes] = await Promise.all([booksQuery, songsQuery])
+    
+    // Build book map with matched songs
+    const booksMap = new Map<number, BookSummary>()
+    
+    // Add books that matched by book_name
+    if (booksRes.data) {
+      booksRes.data.forEach(book => {
+        booksMap.set(book.id, { 
+          id: book.id, 
+          book_name: book.book_name,
+          created_at: book.created_at, 
+          resultType: 'book', 
+          matchedSongs: [] 
+        })
+      })
+    }
+    
+    // Process songs that matched by song_name
+    if (songsRes.data) {
+      songsRes.data.forEach(song => {
+        if (song.book_id && song.books) {
+          const bookData = Array.isArray(song.books) ? song.books[0] : song.books
+          
+          if (!booksMap.has(song.book_id)) {
+            // Add book from song's JOIN
+            booksMap.set(song.book_id, {
+              id: bookData.id,
+              book_name: bookData.book_name,
+              created_at: bookData.created_at,
+              resultType: 'book',
+              matchedSongs: []
+            })
+          }
+          
+          // Add matched song
+          const book = booksMap.get(song.book_id)!
+          book.matchedSongs!.push({
+            id: song.id,
+            song_name: song.song_name,
+            grade: song.grade,
+            created_at: song.created_at,
+            book_id: song.book_id,
+            resultType: 'song'
+          })
+        }
+      })
+    }
+    
+    // Sort and paginate in memory
+    const allBooks = Array.from(booksMap.values()).sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
     
     totalCount = allBooks.length
