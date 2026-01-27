@@ -2,16 +2,10 @@ import Header from '../../components/Header'
 import Footer from '../../components/Footer'
 import SearchBar from '../../components/SearchBar'
 import { searchParamsCache } from '@/lib/searchParams'
-import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import SearchTypeFilter from '../../components/SearchTypeFilter'
 import Pagination from '../../components/Pagination'
-import { Tables } from '@/types/supabase'
-
-type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'book_id' | 'grade' | 'created_at'> & { resultType: 'song' }
-type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book', matchedSongs?: SongSummary[] }
-
-type SearchResultItem = SongSummary | BookSummary
+import { searchBooksAndSongs } from '@/lib/getdataFromSupabase'
 
 export default async function SearchPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -19,135 +13,7 @@ export default async function SearchPage(props: {
   const searchParams = await props.searchParams
   const { query, type, page } = searchParamsCache.parse(searchParams)
 
-  const ITEMS_PER_PAGE = 10
-  const offset = (page - 1) * ITEMS_PER_PAGE
-  
-  const supabase = await createClient()
-  
-  let results: SearchResultItem[] = []
-  let totalCount = 0
-  let totalPages = 0
-
-  // Helper to fetch books
-  const fetchBooks = async () => {
-    let queryBuilder = supabase
-      .from('books')
-      .select('id, book_name, created_at', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + ITEMS_PER_PAGE - 1)
-
-    if (query) {
-      queryBuilder = queryBuilder.ilike('book_name', `%${query}%`)
-    }
-    
-    return await queryBuilder
-  }
-
-  // Helper to fetch songs
-  const fetchSongs = async () => {
-    let queryBuilder = supabase
-      .from('songs')
-      .select('id, song_name, grade, created_at, book_id', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(offset, offset + ITEMS_PER_PAGE - 1)
-
-    if (query) {
-      queryBuilder = queryBuilder.ilike('song_name', `%${query}%`)
-    }
-
-    return await queryBuilder
-  }
-
-  if (type === 'book') {
-    const { data, count } = await fetchBooks()
-    if (data) {
-      results = data.map(d => ({ ...d, resultType: 'book' }))
-    }
-    totalCount = count || 0
-    totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
-
-  } else if (type === 'song') {
-    const { data, count } = await fetchSongs()
-    if (data) {
-      results = data.map(d => ({ ...d, resultType: 'song' }))
-    }
-    totalCount = count || 0
-    totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
-
-  } else {
-    // type === 'all'
-    // Only 2 queries: books and songs with full JOIN
-    const booksQuery = supabase
-      .from('books')
-      .select('id, book_name, created_at')
-    
-    const songsQuery = supabase
-      .from('songs')
-      .select('id, song_name, grade, created_at, book_id, books!inner(id, book_name, created_at)')
-    
-    if (query) {
-      booksQuery.ilike('book_name', `%${query}%`)
-      songsQuery.ilike('song_name', `%${query}%`)
-    }
-    
-    const [booksRes, songsRes] = await Promise.all([booksQuery, songsQuery])
-    
-    // Build book map with matched songs
-    const booksMap = new Map<number, BookSummary>()
-    
-    // Add books that matched by book_name
-    if (booksRes.data) {
-      booksRes.data.forEach(book => {
-        booksMap.set(book.id, { 
-          id: book.id, 
-          book_name: book.book_name,
-          created_at: book.created_at, 
-          resultType: 'book', 
-          matchedSongs: [] 
-        })
-      })
-    }
-    
-    // Process songs that matched by song_name
-    if (songsRes.data) {
-      songsRes.data.forEach(song => {
-        if (song.book_id && song.books) {
-          const bookData = Array.isArray(song.books) ? song.books[0] : song.books
-          
-          if (!booksMap.has(song.book_id)) {
-            // Add book from song's JOIN
-            booksMap.set(song.book_id, {
-              id: bookData.id,
-              book_name: bookData.book_name,
-              created_at: bookData.created_at,
-              resultType: 'book',
-              matchedSongs: []
-            })
-          }
-          
-          // Add matched song
-          const book = booksMap.get(song.book_id)!
-          book.matchedSongs!.push({
-            id: song.id,
-            song_name: song.song_name,
-            grade: song.grade,
-            created_at: song.created_at,
-            book_id: song.book_id,
-            resultType: 'song'
-          })
-        }
-      })
-    }
-    
-    // Sort and paginate in memory
-    const allBooks = Array.from(booksMap.values()).sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )
-    
-    totalCount = allBooks.length
-    totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
-    results = allBooks.slice(offset, offset + ITEMS_PER_PAGE)
-  }
+  const { results, totalCount, totalPages } = await searchBooksAndSongs(query, type, page)
 
   const hasPrev = page > 1
   const hasNext = page < totalPages
@@ -170,111 +36,130 @@ export default async function SearchPage(props: {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           <SearchTypeFilter />
           
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left whitespace-nowrap">
-                <thead className="bg-muted text-muted-foreground border-b border-border">
-                  <tr>
-                    <th className="px-6 py-3 w-25 font-medium">Type</th>
-                    <th className="px-6 py-3 font-medium">Name</th>
-                    <th className="px-6 py-3 font-medium">Info</th>
-                    <th className="px-6 py-3 font-medium w-37.5">Link</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {results.length > 0 ? (
-                    results.map((item) => {
-                      const rows = []
-                      
-                      // Add main book row
-                      rows.push(
-                        <tr key={`${item.resultType}-${item.id}`} className="hover:bg-muted/50 transition-colors">
-                          <td className="px-6 py-3">
-                            {item.resultType === 'book' ? (
-                              <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:text-blue-300">
-                                📚 Book
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:text-green-300">
-                                🎵 Song
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3 font-medium text-foreground">
+          <div className="space-y-4">
+            {results.length > 0 ? (
+              results.map((item) => (
+                <div 
+                  key={`${item.resultType}-${item.id}`} 
+                  className="group relative flex flex-col sm:flex-row gap-4 p-4 sm:p-5 rounded-xl border border-border bg-card shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/20"
+                >
+                  {/* Icon Column */}
+                  <div className="shrink-0 flex sm:block">
+                     <div className={`p-3 rounded-full ${
+                       item.resultType === 'book' 
+                         ? 'bg-blue-100/50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' 
+                         : 'bg-green-100/50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                     }`}>
+                       {item.resultType === 'book' ? (
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                         </svg>
+                       ) : (
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                           <path d="M9 18V5l12-2v13"/>
+                           <circle cx="6" cy="18" r="3"/>
+                           <circle cx="18" cy="16" r="3"/>
+                         </svg>
+                       )}
+                     </div>
+                  </div>
+
+                  {/* Content Column */}
+                  <div className="flex-1 min-w-0 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                             item.resultType === 'book'
+                               ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                               : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                          }`}>
+                            {item.resultType === 'book' ? 'Book' : 'Song'}
+                          </span>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                              <line x1="16" x2="16" y1="2" y2="6"/>
+                              <line x1="8" x2="8" y1="2" y2="6"/>
+                              <line x1="3" x2="21" y1="10" y2="10"/>
+                            </svg>
+                            {new Date(item.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold leading-tight group-hover:text-primary transition-colors">
+                          <Link href={item.resultType === 'book' ? `/book/${item.id}` : (item.book_id ? `/book/${item.book_id}` : '#')} className="focus:outline-hidden before:absolute before:inset-0">
                             {item.resultType === 'book' ? item.book_name : item.song_name}
-                          </td>
-                          <td className="px-6 py-3 text-muted-foreground max-w-75 truncate">
-                            <span className="text-xs mr-2">
-                              {new Date(item.created_at).toLocaleDateString()}
-                            </span>
-                            {item.resultType === 'song' && item.grade && (
-                               <span className="text-xs border border-border px-1 rounded">{item.grade}</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-3">
-                             {item.resultType === 'book' ? (
-                                <Link href={`/book/${item.id}`} className="text-primary hover:underline">
-                                  詳細を見る &rarr;
-                                </Link>
-                             ) : (
-                                item.book_id ? (
-                                  <Link href={`/book/${item.book_id}`} className="text-primary hover:underline">
-                                    詳細を見る &rarr;
-                                  </Link>
-                                ) : (
-                                  <span className="text-muted-foreground">-</span>
-                                )
-                             )}
-                          </td>
-                        </tr>
-                      )
-                      
-                      // Add matched songs rows (only songs that matched the query)
-                      if (item.resultType === 'book' && item.matchedSongs && item.matchedSongs.length > 0) {
-                        item.matchedSongs.forEach((song) => {
-                          rows.push(
-                            <tr key={`song-${song.id}`} className="bg-muted/30 hover:bg-muted/50 transition-colors">
-                              <td className="px-6 py-3 pl-12">
-                                <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:text-green-300">
-                                  🎵 Song
-                                </span>
-                              </td>
-                              <td className="px-6 py-3 text-sm text-foreground">
-                                {song.song_name}
-                              </td>
-                              <td className="px-6 py-3 text-muted-foreground max-w-75 truncate">
-                                <span className="text-xs mr-2">
-                                  {new Date(song.created_at).toLocaleDateString()}
-                                </span>
-                                {song.grade && (
-                                   <span className="text-xs border border-border px-1 rounded">{song.grade}</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-3">
-                                <Link href={`/book/${item.id}`} className="text-primary hover:underline">
-                                  詳細を見る &rarr;
-                                </Link>
-                              </td>
-                            </tr>
-                          )
-                        })
-                      }
-                      
-                      return rows
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
-                        見つかりませんでした。
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                          </Link>
+                        </h3>
+                      </div>
+                    </div>
+                    
+                    {/* Song Specific Info */}
+                    {item.resultType === 'song' && (
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                        {item.grade && (
+                          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            <span>Grade: {item.grade}</span>
+                          </div>
+                        )}
+                         {item.book_name && (
+                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="m16 6 4 14"/>
+                                  <path d="M12 6v14"/>
+                                  <path d="M8 8v12"/>
+                                  <path d="M4 4v16"/>
+                                </svg>
+                                <span className="truncate max-w-[200px]">収録: {item.book_name}</span>
+                            </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Matched Songs for Book */}
+                    {item.resultType === 'book' && item.matchedSongs && item.matchedSongs.length > 0 && (
+                       <div className="mt-3 pt-3 border-t border-border/50">
+                          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M9 18V5l12-2v13"/>
+                              <circle cx="6" cy="18" r="3"/>
+                              <circle cx="18" cy="16" r="3"/>
+                            </svg>
+                            ヒットした曲:
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {item.matchedSongs.map(song => (
+                               <div key={song.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm">
+                                  <span className="font-medium truncate">{song.song_name}</span>
+                                  {song.grade && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{song.grade}</span>}
+                               </div>
+                            ))}
+                          </div>
+                       </div>
+                    )}
+                  </div>
+
+                  {/* Action Icon (Chevron) */}
+                  <div className="hidden sm:flex items-center justify-center pl-2 text-muted-foreground/50 group-hover:text-primary transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-20 bg-muted/10 rounded-2xl border-2 border-dashed border-border">
+                <p className="text-muted-foreground text-lg">条件に一致する結果は見つかりませんでした。</p>
+                <p className="text-sm text-muted-foreground/60 mt-1">検索ワードを変えて再度お試しください。</p>
+              </div>
+            )}
           </div>
           
           {totalPages > 1 && (
