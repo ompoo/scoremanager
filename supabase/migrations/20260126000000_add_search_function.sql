@@ -50,7 +50,7 @@ BEGIN
       s.book_id,
       'song'::TEXT as result_type
      FROM songs s
-     INNER JOIN books b ON s.book_id = b.id
+     LEFT JOIN books b ON s.book_id = b.id
      WHERE search_query = '' OR s.song_name ILIKE '%' || search_query || '%')
   ) sub
   ORDER BY sub.created_at DESC
