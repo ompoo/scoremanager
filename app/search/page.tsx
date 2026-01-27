@@ -117,7 +117,7 @@ export default async function SearchPage(props: {
                                   <path d="M8 8v12"/>
                                   <path d="M4 4v16"/>
                                 </svg>
-                                <span className="truncate max-w-[200px]">収録: {item.book_name}</span>
+                                <span className="truncate max-w-50">収録: {item.book_name}</span>
                             </div>
                         )}
                       </div>

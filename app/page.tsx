@@ -3,8 +3,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Notice from './_component/Notice'
 import Pickups from './_component/Pickups'
-import SearchBar from '@/components/SearchBar'
-import ExtraSearch from '@/components/ExtraSearch'
+import HomeSearchSection from './_component/HomeSearchSection'
 
 export default function Home() {
   return (
@@ -24,15 +23,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="w-full space-y-6">
-            <div  className="w-full transform transition-all hover:scale-[1.01] duration-300">
-              <SearchBar autoSync={false} />
-            </div>
-            
-            <div className="flex justify-center w-full">
-                <ExtraSearch />
-            </div>
-          </div>
+          <HomeSearchSection />
         </section>
 
         {/* Information Sections */}
