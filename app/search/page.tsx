@@ -13,7 +13,15 @@ export default async function SearchPage(props: {
   const searchParams = await props.searchParams
   const { query, type, page } = searchParamsCache.parse(searchParams)
 
-  const { results, totalCount, totalPages } = await searchBooksAndSongs(query, type, page)
+  // Type narrowing for overloaded function
+  let results, totalCount, totalPages
+  if (type === 'book') {
+    ({ results, totalCount, totalPages } = await searchBooksAndSongs(query, 'book', page))
+  } else if (type === 'song') {
+    ({ results, totalCount, totalPages } = await searchBooksAndSongs(query, 'song', page))
+  } else {
+    ({ results, totalCount, totalPages } = await searchBooksAndSongs(query, 'all', page))
+  }
 
   const hasPrev = page > 1
   const hasNext = page < totalPages
@@ -41,19 +49,21 @@ export default async function SearchPage(props: {
           
           <div className="space-y-4">
             {results.length > 0 ? (
-              results.map((item) => (
+              results.map((item) => {
+                const itemType = 'result_type' in item ? item.result_type : type
+                return (
                 <div 
-                  key={`${item.resultType}-${item.id}`} 
+                  key={`${itemType}-${item.id}`} 
                   className="group relative flex flex-col sm:flex-row gap-4 p-4 sm:p-5 rounded-xl border border-border bg-card shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/20"
                 >
                   {/* Icon Column */}
                   <div className="shrink-0 flex sm:block">
                      <div className={`p-3 rounded-full ${
-                       item.resultType === 'book' 
+                       itemType === 'book' 
                          ? 'bg-blue-100/50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' 
                          : 'bg-green-100/50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                      }`}>
-                       {item.resultType === 'book' ? (
+                       {itemType === 'book' ? (
                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
@@ -74,11 +84,11 @@ export default async function SearchPage(props: {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                             item.resultType === 'book'
+                             itemType === 'book'
                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
                                : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
                           }`}>
-                            {item.resultType === 'book' ? 'Book' : 'Song'}
+                            {itemType === 'book' ? 'Book' : 'Song'}
                           </span>
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -91,17 +101,17 @@ export default async function SearchPage(props: {
                           </span>
                         </div>
                         <h3 className="text-lg font-semibold leading-tight group-hover:text-primary transition-colors">
-                          <Link href={item.resultType === 'book' ? `/book/${item.id}` : (item.book_id ? `/book/${item.book_id}` : '#')} className="focus:outline-hidden before:absolute before:inset-0">
-                            {item.resultType === 'book' ? item.book_name : item.song_name}
+                          <Link href={itemType === 'book' ? `/book/${item.id}` : ('book_id' in item && item.book_id ? `/book/${item.book_id}` : '#')} className="focus:outline-hidden before:absolute before:inset-0">
+                            {itemType === 'book' ? ('book_name' in item ? item.book_name : '') : ('song_name' in item ? item.song_name : '')}
                           </Link>
                         </h3>
                       </div>
                     </div>
                     
                     {/* Song Specific Info */}
-                    {item.resultType === 'song' && (
+                    {itemType === 'song' && (
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        {item.grade && (
+                        {'grade' in item && item.grade && (
                           <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -109,7 +119,7 @@ export default async function SearchPage(props: {
                             <span>Grade: {item.grade}</span>
                           </div>
                         )}
-                         {item.book_name && (
+                         {'book_name' in item && item.book_name && (
                             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 border border-border/50">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="m16 6 4 14"/>
@@ -122,28 +132,6 @@ export default async function SearchPage(props: {
                         )}
                       </div>
                     )}
-
-                    {/* Matched Songs for Book */}
-                    {item.resultType === 'book' && item.matchedSongs && item.matchedSongs.length > 0 && (
-                       <div className="mt-3 pt-3 border-t border-border/50">
-                          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M9 18V5l12-2v13"/>
-                              <circle cx="6" cy="18" r="3"/>
-                              <circle cx="18" cy="16" r="3"/>
-                            </svg>
-                            ヒットした曲:
-                          </p>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {item.matchedSongs.map(song => (
-                               <div key={song.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 text-sm">
-                                  <span className="font-medium truncate">{song.song_name}</span>
-                                  {song.grade && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{song.grade}</span>}
-                               </div>
-                            ))}
-                          </div>
-                       </div>
-                    )}
                   </div>
 
                   {/* Action Icon (Chevron) */}
@@ -153,7 +141,7 @@ export default async function SearchPage(props: {
                     </svg>
                   </div>
                 </div>
-              ))
+              )})
             ) : (
               <div className="text-center py-20 bg-muted/10 rounded-2xl border-2 border-dashed border-border">
                 <p className="text-muted-foreground text-lg">条件に一致する結果は見つかりませんでした。</p>

@@ -1,18 +1,30 @@
 import { createClient } from '@/utils/supabase/server'
 import { Tables } from '@/types/supabase'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { SearchType } from './searchParams'
 
-type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'book_id' | 'grade' | 'created_at'> & { resultType: 'song', book_name?: string | null }
-type BookSummary = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> & { resultType: 'book', matchedSongs?: SongSummary[] }
+type FetchBooksResult = Pick<Tables<'books'>, 'id' | 'book_name' | 'created_at'> 
 
-export type SearchResultItem = SongSummary | BookSummary
+type FetchSongsResult = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'created_at' | 'book_id'> & { 
+  book_name: string | null
+}
+
+type FetchAllResult = {
+  result_type: 'book' | 'song'
+  total_count: number
+} & (
+  | { result_type: 'book'; } & FetchBooksResult
+  | { result_type: 'song'; } & FetchSongsResult
+)
+
+export type SearchResultItem = FetchAllResult
 
 const ITEMS_PER_PAGE = 10
 
 
 
   // Helper to fetch books
-const fetchBooks = async (supabase: SupabaseClient, query: string, offset: number) => {
+const fetchBooks = async (supabase: SupabaseClient, query: string, offset: number): Promise<{ data: FetchBooksResult[] | null; count: number | null }> => {
     let queryBuilder = supabase
       .from('books')
       .select('id, book_name, created_at', { count: 'exact' })
@@ -27,10 +39,10 @@ const fetchBooks = async (supabase: SupabaseClient, query: string, offset: numbe
 }
 
 // Helper to fetch songs
-const fetchSongs = async (supabase: SupabaseClient, query: string, offset: number) => {
+const fetchSongs = async (supabase: SupabaseClient, query: string, offset: number): Promise<{ data: FetchSongsResult[] | null; count: number | null }> => {
     let queryBuilder = supabase
       .from('songs')
-      .select('id, song_name, grade, created_at, book_id, books(book_name)', { count: 'exact' })
+      .select('id, song_name, grade, created_at, book_id,...books(book_name)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + ITEMS_PER_PAGE - 1)
 
@@ -38,19 +50,45 @@ const fetchSongs = async (supabase: SupabaseClient, query: string, offset: numbe
       queryBuilder = queryBuilder.ilike('song_name', `%${query}%`)
     }
 
-    return await queryBuilder
+    const { data, count, error } = await queryBuilder
+    if (error) throw error
+    console.log(data);
+    
+    return { data, count }
 }
 
 
+// Function overloads for type-safe search results
 export async function searchBooksAndSongs(
   query: string,
-  type: 'book' | 'song' | 'all',
+  type: 'book',
   page: number
-) {
+): Promise<{ results: FetchBooksResult[]; totalCount: number; totalPages: number }>
+
+export async function searchBooksAndSongs(
+  query: string,
+  type: 'song',
+  page: number
+): Promise<{ results: FetchSongsResult[]; totalCount: number; totalPages: number }>
+
+export async function searchBooksAndSongs(
+  query: string,
+  type: 'all',
+  page: number
+): Promise<{ results: FetchAllResult[]; totalCount: number; totalPages: number }>
+
+
+
+// Implementation
+export async function searchBooksAndSongs(
+  query: string,
+  type: SearchType,
+  page: number
+): Promise<{ results: FetchBooksResult[] | FetchSongsResult[] | FetchAllResult[]; totalCount: number; totalPages: number }> {
   const offset = (page - 1) * ITEMS_PER_PAGE
   const supabase = await createClient()
   
-  let results: SearchResultItem[] = []
+  let results: FetchAllResult[] = []
   let totalCount = 0
   let totalPages = 0
 
@@ -59,7 +97,7 @@ export async function searchBooksAndSongs(
   if (type === 'book') {
     const { data, count } = await fetchBooks(supabase, query, offset)
     if (data) {
-      results = data.map(d => ({ ...d, resultType: 'book' }))
+      results = data  as FetchAllResult[]
     }
     totalCount = count || 0
     totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
@@ -68,15 +106,7 @@ export async function searchBooksAndSongs(
   } else if (type === 'song') {
     const { data, count } = await fetchSongs(supabase, query, offset)
     if (data) {
-      results = data.map(d => ({
-        id: d.id,
-        song_name: d.song_name,
-        grade: d.grade,
-        created_at: d.created_at,
-        book_id: d.book_id,
-        book_name: (d.books as any) instanceof Array ? (d.books as any)[0]?.book_name : (d.books as any)?.book_name,
-        resultType: 'song'
-      }))
+      results = data as FetchAllResult[]
     }
     totalCount = count || 0
     totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
@@ -101,26 +131,7 @@ export async function searchBooksAndSongs(
       totalCount = data[0].total_count || 0
       totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
       
-      results = data.map((item) => {
-        if (item.result_type === 'book') {
-          return {
-            id: item.id,
-            book_name: item.book_name!,
-            created_at: item.created_at,
-            resultType: 'book' as const
-          }
-        } else {
-          return {
-            id: item.id,
-            song_name: item.song_name!,
-            grade: item.grade,
-            created_at: item.created_at,
-            book_id: item.book_id,
-            book_name: item.book_name,
-            resultType: 'song' as const
-          }
-        }
-      })
+      results = data as FetchAllResult[]
     }
   }
 
