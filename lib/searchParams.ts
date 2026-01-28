@@ -1,13 +1,14 @@
 import { 
   createSearchParamsCache, 
   parseAsString, 
-  parseAsInteger 
+  parseAsInteger,
+  parseAsStringLiteral
 } from 'nuqs/server'
 
 export const searchParamsParsers = {
   // General search
   query: parseAsString.withDefault(''),
-  type: parseAsString.withDefault('all'), // 'all' | 'book' | 'song'
+  type: parseAsStringLiteral(['all', 'book', 'song'] as const).withDefault('all'),
   
   // Advanced search fields
   book: parseAsString.withDefault(''),
@@ -24,3 +25,6 @@ export const searchParamsParsers = {
 }
 
 export const searchParamsCache = createSearchParamsCache(searchParamsParsers)
+
+// Extract search type from parser definition (no duplication)
+export type SearchType = Awaited<ReturnType<typeof searchParamsCache.parse>>['type']
