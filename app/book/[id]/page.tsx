@@ -6,8 +6,7 @@ import { notFound } from 'next/navigation'
 import BookCover from '../../../components/BookCover'
 import Link from 'next/link'
 import { Tables } from '@/types/supabase'
-
-type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade'>
+import { getSongsByBookId, SongSummary } from '@/lib/getdataFromSupabase'
 
 export default async function BookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -33,24 +32,8 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
     notFound()
   }
 
-  // Fetch songs in this book (temporarily simplified query for debugging)
-  const selectFields = [
-    'id',
-    'song_name',
-    'grade'
-  ];
-
-  const { data: songsData, error: songsError } = await supabase
-    .from('songs')
-    .select(selectFields.join(', ')) // Dynamically build select string
-    .eq('book_id', bookId)
-    .order('id') // Or order by track number if available
-
-  const songs = songsData as SongSummary[] | null
-
-  if (songsError) {
-    console.error("Error fetching songs for book:", songsError)
-  }
+  // Fetch songs in this book
+  const songs = await getSongsByBookId(bookId)
 
   // YAMAHA Cover Image Logic
   const coverUrl = book.product_code 
@@ -107,7 +90,11 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
                 <thead className="bg-muted text-muted-foreground border-b border-border">
                   <tr>
                     <th className="px-6 py-4 font-medium">Song Name</th>
-                    {/* Simplified for debugging */}
+                    <th className="px-6 py-4 font-medium">Songwriters</th>
+                    <th className="px-6 py-4 font-medium">Arrangers</th>
+                    <th className="px-6 py-4 font-medium">Lyricists</th>
+                    <th className="px-6 py-4 font-medium">Artists</th>
+                    <th className="px-6 py-4 font-medium">Memo</th>
                     <th className="px-6 py-4 font-medium">Grade</th> 
                   </tr>
                 </thead>
@@ -116,12 +103,27 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
                     songs.map((song) => (
                       <tr key={song.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-6 py-4 font-medium text-foreground">{song.song_name}</td>
+                        <td className="px-6 py-4 text-muted-foreground">
+                          {song.song_writer_association?.map(a => a.songwriters?.song_writer_name).filter(Boolean).join(', ') || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground">
+                          {song.song_arranger_association?.map(a => a.arrangers?.arranger_name).filter(Boolean).join(', ') || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground">
+                          {song.song_lyricist_association?.map(a => a.lyricists?.lyricist_name).filter(Boolean).join(', ') || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground">
+                          {song.song_artist_association?.map(a => a.artists?.Artist_name).filter(Boolean).join(', ') || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground whitespace-normal min-w-[150px]">
+                          {song.memo || '-'}
+                        </td>
                         <td className="px-6 py-4 text-muted-foreground">{song.grade || '-'}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={2} className="px-6 py-12 text-center text-muted-foreground">
+                      <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
                         収録曲情報がありません。
                       </td>
                     </tr>

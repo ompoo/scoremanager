@@ -138,3 +138,60 @@ export async function searchBooksAndSongs(
 
   return { results, totalCount, totalPages }
 }
+
+export type SongSummary = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'memo'> & {
+  song_writer_association: {
+    songwriters: Pick<Tables<'songwriters'>, 'song_writer_name'> | null
+  }[]
+  song_arranger_association: {
+    arrangers: Pick<Tables<'arrangers'>, 'arranger_name'> | null
+  }[]
+  song_lyricist_association: {
+    lyricists: Pick<Tables<'lyricists'>, 'lyricist_name'> | null
+  }[]
+  song_artist_association: {
+    artists: Pick<Tables<'artists'>, 'Artist_name'> | null
+  }[]
+}
+
+export async function getSongsByBookId(bookId: number): Promise<SongSummary[] | null> {
+  const supabase = await createClient()
+  
+  const { data: songsData, error: songsError } = await supabase
+    .from('songs')
+    .select(`
+      id,
+      song_name,
+      grade,
+      memo,
+      song_writer_association (
+        songwriters (
+          song_writer_name
+        )
+      ),
+      song_arranger_association (
+        arrangers (
+          arranger_name
+        )
+      ),
+      song_lyricist_association (
+        lyricists (
+          lyricist_name
+        )
+      ),
+      song_artist_association (
+        artists (
+          Artist_name
+        )
+      )
+    `)
+    .eq('book_id', bookId)
+    .order('id')
+
+  if (songsError) {
+    console.error("Error fetching songs for book:", songsError)
+    return null
+  }
+
+  return songsData as SongSummary[]
+}
