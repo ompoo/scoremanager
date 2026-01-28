@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Notice from './_component/Notice'
@@ -23,7 +23,9 @@ export default function Home() {
             </p>
           </div>
 
-          <HomeSearchSection />
+          <Suspense fallback={<div className="w-full h-20 animate-pulse bg-muted rounded-lg" />}>
+            <HomeSearchSection />
+          </Suspense>
         </section>
 
         {/* Information Sections */}
