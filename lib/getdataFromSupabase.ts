@@ -34,8 +34,10 @@ const fetchBooks = async (supabase: SupabaseClient, query: string, offset: numbe
     if (query) {
       queryBuilder = queryBuilder.ilike('book_name', `%${query}%`)
     }
+    const { data, count, error } = await queryBuilder
+    if (error) throw error
     
-    return await queryBuilder
+    return { data, count }
 }
 
 // Helper to fetch songs
@@ -52,7 +54,6 @@ const fetchSongs = async (supabase: SupabaseClient, query: string, offset: numbe
 
     const { data, count, error } = await queryBuilder
     if (error) throw error
-    console.log(data);
     
     return { data, count }
 }
@@ -102,7 +103,7 @@ export async function searchBooksAndSongs(
     totalCount = count || 0
     totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
 
-　// song search
+  // song search
   } else if (type === 'song') {
     const { data, count } = await fetchSongs(supabase, query, offset)
     if (data) {
