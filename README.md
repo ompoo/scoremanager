@@ -25,6 +25,8 @@
 このプロジェクトは Next.js で構築されています。
 
 ### Tech Stack
+
+**Frontend:**
 - **Framework**: Next.js (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
@@ -32,9 +34,14 @@
 - **Schema Validation**: Zod
 - **URL State Management**: Nuqs
 
+**Backend / Data Management:**
+- **Database**: Supabase
+- **Data Scraping**: Python 3.12+
+- **Package Manager**: uv
+
 ### Getting Started
 
-ローカル環境での立ち上げ方です。
+#### Frontend Development
 
 ```bash
 # 依存関係のインストール
@@ -45,6 +52,37 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+#### Data Registration (Python)
+
+楽譜データをSupabaseに登録するためのPythonスクリプトです。
+
+**Prerequisites:**
+- Python 3.12 以上
+- uv (Python package manager)
+- `.env.local` ファイルに Supabase の認証情報が設定されていること
+
+**Setup & Run:**
+
+```bash
+# Python環境のセットアップ（初回のみ）
+uv sync
+
+# データ登録スクリプトの実行
+uv run register
+```
+
+スクリプトは `supabase/scripts/data.txt` に記載されたヤマハ楽譜コードを読み込み、自動的にスクレイピングしてSupabaseに登録します。
+
+**Project Structure:**
+```
+supabase/
+  ├── scripts/
+  │   ├── register_actions.py  # メイン登録スクリプト
+  │   ├── data.txt              # 登録対象の楽譜コード
+  │   └── generate_seed_sql.py  # シードデータ生成用
+  └── migrations/               # Supabase マイグレーションファイル
+```
 
 ### Development Note
 開発に関する議論や連絡事項は、Ompoo Dev Discord の「楽譜館」チャンネルで行っています。
