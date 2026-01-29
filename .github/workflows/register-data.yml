@@ -25,6 +25,7 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
+          python-version: "3.12"
 
       - name: Run data registration script
         env:
@@ -44,11 +45,7 @@ jobs:
               exit 1
             }
             echo "Changes committed and pushed successfully"
+            echo "Vercel will automatically deploy from the new commit"
           else
             echo "No changes to commit"
           fi
-
-      - name: Deployment triggered
-        run: |
-          echo "Data registration completed and changes committed"
-          echo "Vercel will automatically deploy from the new commit"
