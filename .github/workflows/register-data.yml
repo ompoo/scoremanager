@@ -1,0 +1,50 @@
+name: Register Score Data
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/scripts/data.txt'
+
+concurrency:
+  group: register-data
+  cancel-in-progress: false
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Run data registration script
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: uv run register
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add app/_component/notice.json
+          if ! git diff --staged --quiet; then
+            git commit -m "ci:Update notice after new data registration [skip ci]"
+            git push --force-with-lease || {
+              echo "Push failed - another commit was pushed to main during workflow execution"
+              exit 1
+            }
+            echo "Changes committed and pushed successfully"
+            echo "Vercel will automatically deploy from the new commit"
+          else
+            echo "No changes to commit"
+          fi
