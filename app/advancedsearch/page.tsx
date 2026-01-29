@@ -4,19 +4,8 @@ import Footer from '../../components/Footer'
 import ExtraSearch from '../../components/ExtraSearch'
 import Pagination from '../../components/Pagination'
 import { searchParamsCache } from '@/lib/searchParams'
-import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
-import { Tables } from '@/types/supabase'
-
-const ITEMS_PER_PAGE = 20;
-
-type SongWithDetails = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'memo' | 'book_id'> & {
-  books: Pick<Tables<'books'>, 'id' | 'book_name'> | null;
-  artists: Pick<Tables<'artists'>, 'Artist_name'>[] | null;
-  lyricists: Pick<Tables<'lyricists'>, 'lyricist_name'>[] | null;
-  songwriters: Pick<Tables<'songwriters'>, 'song_writer_name'>[] | null;
-  arrangers: Pick<Tables<'arrangers'>, 'arranger_name'>[] | null;
-}
+import { advancedSearchSongs } from '@/lib/getdataFromSupabase'
 
 export default async function AdvancedSearch(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const searchParams = await props.searchParams
@@ -32,43 +21,19 @@ export default async function AdvancedSearch(props: { searchParams: Promise<Reco
     memo 
   } = searchParamsCache.parse(searchParams)
 
-  const supabase = await createClient()
+  // Use the advancedSearchSongs function from getdataFromSupabase
+  const { songs, totalCount, totalPages, error } = await advancedSearchSongs({
+    book,
+    song,
+    artist,
+    lyricist,
+    songWriter,
+    arranger,
+    grade,
+    memo,
+    page
+  })
 
-  // Base Query Selection
-  const selects = [
-    'id', 'song_name', 'grade', 'memo', 'book_id',
-    // Always fetch book info
-    book ? 'books!inner(id, book_name)' : 'books(id, book_name)',
-    // Relations
-    artist ? 'artists!inner(Artist_name)' : 'artists(Artist_name)',
-    lyricist ? 'lyricists!inner(lyricist_name)' : 'lyricists(lyricist_name)',
-    songWriter ? 'songwriters!inner(song_writer_name)' : 'songwriters(song_writer_name)',
-    arranger ? 'arrangers!inner(arranger_name)' : 'arrangers(arranger_name)',
-  ]
-  
-  // Reset builder with dynamic select
-  let queryBuilder = supabase.from('songs').select(selects.join(','), { count: 'exact' })
-
-  // Re-apply filters
-  if (song) queryBuilder = queryBuilder.ilike('song_name', `%${song}%`)
-  if (grade) queryBuilder = queryBuilder.ilike('grade', `%${grade}%`)
-  if (memo) queryBuilder = queryBuilder.ilike('memo', `%${memo}%`)
-  
-  if (book) queryBuilder = queryBuilder.ilike('books.book_name', `%${book}%`)
-  if (artist) queryBuilder = queryBuilder.ilike('artists.Artist_name', `%${artist}%`)
-  if (lyricist) queryBuilder = queryBuilder.ilike('lyricists.lyricist_name', `%${lyricist}%`)
-  if (songWriter) queryBuilder = queryBuilder.ilike('songwriters.song_writer_name', `%${songWriter}%`)
-  if (arranger) queryBuilder = queryBuilder.ilike('arrangers.arranger_name', `%${arranger}%`)
-
-  // Pagination
-  const from = (page - 1) * ITEMS_PER_PAGE;
-  const to = from + ITEMS_PER_PAGE - 1;
-  
-  const { data, count, error } = await queryBuilder.range(from, to).order('created_at', { ascending: false })
-
-  const songs = data as unknown as SongWithDetails[] | null
-
-  const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
   const hasPrev = page > 1;
   const hasNext = page < totalPages;
 
