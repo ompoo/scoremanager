@@ -19,7 +19,7 @@ type FetchAllResult = {
 
 export type SearchResultItem = FetchAllResult
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 20
 
 
 
@@ -194,4 +194,76 @@ export async function getSongsByBookId(bookId: number): Promise<SongSummary[] | 
   }
 
   return songsData as SongSummary[]
+}
+
+// Advanced search types
+export type AdvancedSearchParams = {
+  book?: string
+  song?: string
+  artist?: string
+  lyricist?: string
+  songWriter?: string
+  arranger?: string
+  grade?: string
+  memo?: string
+  page: number
+}
+
+export type SongWithDetails = Pick<Tables<'songs'>, 'id' | 'song_name' | 'grade' | 'memo' | 'book_id'> & {
+  books: Pick<Tables<'books'>, 'id' | 'book_name'> | null;
+  artists: Pick<Tables<'artists'>, 'Artist_name'>[] | null;
+  lyricists: Pick<Tables<'lyricists'>, 'lyricist_name'>[] | null;
+  songwriters: Pick<Tables<'songwriters'>, 'song_writer_name'>[] | null;
+  arrangers: Pick<Tables<'arrangers'>, 'arranger_name'>[] | null;
+}
+
+export async function advancedSearchSongs(
+  params: AdvancedSearchParams
+): Promise<{ songs: SongWithDetails[] | null; totalCount: number; totalPages: number; error: Error | null }> {
+  const supabase = await createClient()
+  
+  const { book, song, artist, lyricist, songWriter, arranger, grade, memo, page } = params
+
+  // Base Query Selection
+  const selects = [
+    'id', 'song_name', 'grade', 'memo', 'book_id',
+    // Always fetch book info
+    book ? 'books!inner(id, book_name)' : 'books(id, book_name)',
+    // Relations
+    artist ? 'artists!inner(Artist_name)' : 'artists(Artist_name)',
+    lyricist ? 'lyricists!inner(lyricist_name)' : 'lyricists(lyricist_name)',
+    songWriter ? 'songwriters!inner(song_writer_name)' : 'songwriters(song_writer_name)',
+    arranger ? 'arrangers!inner(arranger_name)' : 'arrangers(arranger_name)',
+  ]
+  
+  // Reset builder with dynamic select
+  let queryBuilder = supabase.from('songs').select(selects.join(','), { count: 'exact' })
+
+  // Re-apply filters
+  if (song) queryBuilder = queryBuilder.ilike('song_name', `%${song}%`)
+  if (grade) queryBuilder = queryBuilder.ilike('grade', `%${grade}%`)
+  if (memo) queryBuilder = queryBuilder.ilike('memo', `%${memo}%`)
+  
+  if (book) queryBuilder = queryBuilder.ilike('books.book_name', `%${book}%`)
+  if (artist) queryBuilder = queryBuilder.ilike('artists.Artist_name', `%${artist}%`)
+  if (lyricist) queryBuilder = queryBuilder.ilike('lyricists.lyricist_name', `%${lyricist}%`)
+  if (songWriter) queryBuilder = queryBuilder.ilike('songwriters.song_writer_name', `%${songWriter}%`)
+  if (arranger) queryBuilder = queryBuilder.ilike('arrangers.arranger_name', `%${arranger}%`)
+
+  // Pagination
+  const from = (page - 1) * ITEMS_PER_PAGE;
+  const to = from + ITEMS_PER_PAGE - 1;
+  
+  const { data, count, error } = await queryBuilder.range(from, to).order('created_at', { ascending: false })
+
+  const songs = data as unknown as SongWithDetails[] | null
+  const totalCount = count || 0
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE)
+
+  return { 
+    songs, 
+    totalCount, 
+    totalPages, 
+    error: error as Error | null 
+  }
 }
