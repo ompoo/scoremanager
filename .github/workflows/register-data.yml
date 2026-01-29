@@ -7,9 +7,15 @@ on:
     paths:
       - 'supabase/scripts/data.txt'
 
+concurrency:
+  group: register-data
+  cancel-in-progress: false
+
 jobs:
   register:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout repository
@@ -30,17 +36,19 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git add -A
+          git add app/_component/notice.json
           if ! git diff --staged --quiet; then
-            git commit -m "ci:Update notice after new data registration"
-            git push
-            echo "Changes committed and pushed"
+            git commit -m "ci:Update notice after new data registration [skip ci]"
+            git push --force-with-lease || {
+              echo "Push failed - another commit was pushed to main during workflow execution"
+              exit 1
+            }
+            echo "Changes committed and pushed successfully"
           else
             echo "No changes to commit"
           fi
 
       - name: Deployment triggered
-        if: success()
         run: |
           echo "Data registration completed and changes committed"
           echo "Vercel will automatically deploy from the new commit"
