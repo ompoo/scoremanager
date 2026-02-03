@@ -220,3 +220,4 @@ pyrightconfig.json
 # supabase
 supabase/.temp/
 
+.open-next
