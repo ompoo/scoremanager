@@ -142,7 +142,7 @@ export default function HomeSearchSection() {
                   type="text" 
                   id="query"
                   name="query"
-                  placeholder="曲名、本、アーティスト..." 
+                  placeholder="曲名・本" 
                   value={params.query || ''}
                   onChange={handleQueryChange}
                   className="w-full rounded-full bg-card border border-input text-foreground placeholder:text-muted-foreground py-3.5 pl-6 pr-24 text-base shadow-sm transition-all focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 hover:border-primary/50" 
