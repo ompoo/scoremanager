@@ -1,6 +1,7 @@
 name: Register Score Data
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -48,3 +49,4 @@ jobs:
           else
             echo "No changes to commit"
           fi
+        
