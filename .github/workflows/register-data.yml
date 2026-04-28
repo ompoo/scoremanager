@@ -39,7 +39,7 @@ jobs:
           git config user.email "${{ github.actor }}@users.noreply.github.com"
           git add app/_component/notice.json
           if ! git diff --staged --quiet; then
-            git commit -m "ci:Update notice after new data registration [skip ci]"
+            git commit -m "ci:Update notice after new data registration"
             git push --force-with-lease || {
               echo "Push failed - another commit was pushed to main during workflow execution"
               exit 1
