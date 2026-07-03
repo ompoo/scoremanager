@@ -28,7 +28,7 @@ export default async function SearchPage(props: {
 
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header small />
+      <Header />
       
       <div className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 space-y-8">
         <div className="space-y-6">

@@ -182,19 +182,26 @@ export default function HomeSearchSection() {
       <div className="flex justify-center">
         <button
           onClick={toggleMode}
-          className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 px-4 py-2 rounded-full hover:bg-muted/50"
+          className="inline-flex h-10 items-center gap-2 rounded-full border border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
         >
           {isAdvanced ? (
             <>
-              <span>🔍 シンプルな検索に戻る</span>
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.2-5.2m0 0a7.5 7.5 0 1 0-10.6-10.6 7.5 7.5 0 0 0 10.6 10.6Z" />
+              </svg>
+              <span>シンプル検索</span>
             </>
           ) : (
             <>
-              <span>⚙️ 詳細条件で検索する</span>
+              <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9M10.5 12h9M10.5 18h9M4.5 6h.01M4.5 12h.01M4.5 18h.01" />
+              </svg>
+              <span>詳細検索</span>
             </>
           )}
         </button>
       </div>
+
     </div>
   )
 }

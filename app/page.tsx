@@ -4,11 +4,12 @@ import Footer from '@/components/Footer'
 import Notice from './_component/Notice'
 import Pickups from './_component/Pickups'
 import HomeSearchSection from './_component/HomeSearchSection'
+import MyPagePanel from './_component/MyPagePanel'
 
 export default function Home() {
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header small />
+      <Header small showAccountLink={false} variant="home" />
 
       <div className="flex-1 w-full max-w-5xl mx-auto px-4 py-16 sm:py-24 space-y-20">
         
@@ -30,12 +31,16 @@ export default function Home() {
 
         {/* Information Sections */}
         <div className="grid gap-12 pt-8 border-t border-border/50">
-        <section className="space-y-6">
-          <Notice />
-        </section>
+          <section className="space-y-6">
+            <Notice />
+          </section>
+
+          <section className="space-y-6">
+            <MyPagePanel />
+          </section>
           
           <section className="space-y-6">
-          <Pickups />
+            <Pickups />
           </section>
         </div>
       </div>

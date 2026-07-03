@@ -43,7 +43,7 @@ export default async function AdvancedSearch(props: { searchParams: Promise<Reco
 
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
-      <Header small />
+      <Header />
       
       <div className="flex-1 w-full max-w-7xl mx-auto px-4 py-8 space-y-8">
         <div className="text-center space-y-4">
