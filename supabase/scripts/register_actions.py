@@ -16,10 +16,14 @@ load_dotenv(dotenv_path=env_path)
 
 # Supabase Settings
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-SUPABASE_KEY = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+SUPABASE_KEY = os.getenv("SUPABASE_SECRET_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    print("Error: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY not found in environment variables.")
+    print(
+        "Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are required. "
+        "Set them in GitHub Actions secrets or .env.local. "
+        "Data registration requires a backend secret key; an anon/publishable key cannot be used."
+    )
     exit(1)
 
 

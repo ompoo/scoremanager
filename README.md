@@ -62,6 +62,21 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - uv (Python package manager)
 - `.env.local` ファイルに Supabase の認証情報が設定されていること
 
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=your-backend-secret-key
+```
+
+`SUPABASE_SECRET_KEY` には Supabase の **Settings > API Keys** にある Secret key
+（`sb_secret_...`）を設定します。登録処理は書き込み権限が必要なため、公開用の
+anon / publishable key は使用しません。秘密キーに `NEXT_PUBLIC_` を付けたり、
+リポジトリにコミットしたりしないでください。
+
+GitHub Actions では、リポジトリの **Settings > Secrets and variables > Actions** に
+`NEXT_PUBLIC_SUPABASE_URL` と `SUPABASE_SECRET_KEY` を登録してください。
+修正を `main` に反映した後、**Register Score Data > Run workflow** で実行します。
+失敗した実行の **Re-run jobs** は古いコードで動くため、修正後の動作確認には使用しません。
+
 **Setup & Run:**
 
 ```bash
