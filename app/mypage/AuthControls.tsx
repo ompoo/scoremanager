@@ -23,7 +23,7 @@ export default function AuthControls({ user }: Props) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'keycloak',
       options: {
-        redirectTo: `${origin}/auth/callback?next=/mypage`,
+        redirectTo: `${origin}/auth/callback`,
       },
     })
 

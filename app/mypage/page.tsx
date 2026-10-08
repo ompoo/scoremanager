@@ -4,7 +4,17 @@ import { createClient } from '@/utils/supabase/server'
 import AuthControls from './AuthControls'
 import Link from 'next/link'
 
-export default async function Mypage() {
+export default async function Mypage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const resolvedSearchParams = await searchParams
+  const authError =
+    typeof resolvedSearchParams.auth_error === 'string'
+      ? resolvedSearchParams.auth_error
+      : null
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -17,13 +27,24 @@ export default async function Mypage() {
     'ログイン中のユーザー'
 
   const userInitial = displayName.charAt(0).toUpperCase()
-  
-  const lastLogin = user?.last_sign_in_at
-    ? new Date(user.last_sign_in_at).toLocaleString('ja-JP', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
-    : null
+
+  const dashboardItems = [
+    {
+      title: 'お気に入りの楽譜',
+      description: 'よく使う楽譜やあとで確認したい楽譜を保存できるようにします。',
+      status: '開発中',
+    },
+    {
+      title: '編曲楽譜の登録',
+      description: '自分で編曲した楽譜を登録し、部内で共有できるようにします。',
+      status: '開発中',
+    },
+    {
+      title: '欲しい楽譜の投票',
+      description: '購入してほしい楽譜や本をリクエスト・投票できるようにします。',
+      status: '検討中',
+    },
+  ]
 
   return (
     <main className="min-h-screen flex flex-col bg-background text-foreground">
@@ -52,85 +73,78 @@ export default async function Mypage() {
 
         <section className="space-y-8">
           <div className="space-y-2 border-b border-border/50 pb-6">
-            <p className="text-xs font-bold uppercase tracking-widest text-primary">Account Management</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Member Area</p>
             <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">マイページ</h1>
             <p className="max-w-2xl text-muted-foreground text-sm leading-relaxed">
-              音風メンバー用のアカウント管理画面です。ログイン状態の確認やログアウトを行えます。
+              お気に入りの楽譜、編曲楽譜、欲しい楽譜のリクエストを管理するためのページです。
             </p>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/50 backdrop-blur-xs shadow-xs">
-            {user ? (
-              <div className="p-6 sm:p-8 space-y-8">
-                {/* Profile Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-5 border-b border-border/40 pb-6">
-                  <div className="h-16 w-16 shrink-0 rounded-full border border-border bg-muted flex items-center justify-center font-bold text-xl text-primary shadow-xs">
-                    {user.user_metadata?.avatar_url ? (
-                      <img
-                        src={user.user_metadata.avatar_url}
-                        alt={displayName}
-                        className="h-full w-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-primary/30 text-primary">
-                        {userInitial}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
-                      認証済みメンバー
-                    </span>
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{displayName}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">ID: {user.id}</p>
-                  </div>
-                </div>
+          {authError && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+              ログイン処理に失敗しました: {authError}
+            </div>
+          )}
 
-                {/* Account Details */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-xl border border-border/60 bg-muted/10 p-5">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">メールアドレス</span>
-                    <span className="text-sm font-medium break-all text-foreground">{user.email ?? '未設定'}</span>
-                  </div>
-                  {lastLogin && (
-                    <div className="rounded-xl border border-border/60 bg-muted/10 p-5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">最終ログイン時刻</span>
-                      <span className="text-sm font-medium text-foreground">{lastLogin}</span>
+          {user ? (
+            <div className="space-y-8">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                      {user.user_metadata?.avatar_url ? (
+                        <img
+                          src={user.user_metadata.avatar_url}
+                          alt={displayName}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-lg font-bold text-foreground">
+                          {userInitial}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-
-                {/* Auth Controls */}
-                <div className="pt-4 border-t border-border/40 flex items-center justify-between gap-4 flex-wrap">
-                  <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
-                    セッションを終了する場合は、ログアウトボタンを押してください。ブラウザの認証キャッシュがクリアされます。
-                  </p>
+                    <div className="min-w-0">
+                      <p className="text-sm text-muted-foreground">ログイン中</p>
+                      <h2 className="truncate text-xl font-bold tracking-tight">{displayName}</h2>
+                      <p className="truncate text-xs text-muted-foreground">{user.email ?? 'メールアドレス未設定'}</p>
+                    </div>
+                  </div>
                   <AuthControls user={user} />
                 </div>
               </div>
-            ) : (
-              <div className="p-6 sm:p-8 space-y-6">
-                <div className="space-y-3">
-                  <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                    </svg>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                {dashboardItems.map((item) => (
+                  <div
+                    key={item.title}
+                    className="flex min-h-44 flex-col justify-between rounded-2xl border border-border bg-card p-5 shadow-sm"
+                  >
+                    <div className="space-y-2">
+                      <span className="inline-flex rounded-full bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
+                        {item.status}
+                      </span>
+                      <h3 className="text-lg font-bold tracking-tight">{item.title}</h3>
+                      <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+                    </div>
+                    <p className="pt-4 text-xs text-muted-foreground">準備ができ次第、ここから使えるようになります。</p>
                   </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+              <div className="space-y-6">
+                <div className="space-y-2">
                   <h2 className="text-xl font-bold tracking-tight">ログインが必要です</h2>
                   <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                    この機能は部員専用です。お気に入りの登録、編曲楽譜の登録と管理などを利用するには、Keycloakアカウントでログインしてください。
+                    マイページは音風メンバー向けの機能です。Keycloak アカウントでログインしてください。
                   </p>
                 </div>
-                
-                <div className="pt-4 border-t border-border/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <p className="text-xs text-muted-foreground">
-                    ログインに関して問題がある場合は、システム管理者までお問い合わせください。
-                  </p>
-                  <AuthControls user={null} />
-                </div>
+                <AuthControls user={null} />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </section>
       </div>
 
@@ -138,4 +152,3 @@ export default async function Mypage() {
     </main>
   )
 }
-
